@@ -22,3 +22,9 @@ flutter:
 
   assets:
     - assets/images/
+
+  fonts:
+    - family: Pixel
+      fonts:
+        - asset: assets/fonts/PressStart2P-Regular.ttf
+

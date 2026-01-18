@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:fossil_rush/screens/admin_screen.dart';
 import 'package:fossil_rush/screens/main_menu_screen.dart';
+import 'package:fossil_rush/screens/profile_screen.dart';
 import 'package:fossil_rush/screens/register_screen.dart';
+import 'package:fossil_rush/screens/scoreboard_screen.dart';
+import 'package:fossil_rush/screens/shop_screen.dart';
 import 'screens/splash_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/game_screen.dart';
@@ -20,6 +24,7 @@ class MyApp extends StatelessWidget {
       title: 'Dino Quest',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        fontFamily: 'Pixel',
       ),
 
       initialRoute: SplashScreen.routeName,
@@ -31,6 +36,10 @@ class MyApp extends StatelessWidget {
             const MainMenuScreen(isLoggedin: false),
         '/main-menu-logged': (_) => const MainMenuScreen(isLoggedin: true),
         GameScreen.routeName: (_) => const GameScreen(),
+        ShopScreen.routeName: (_) => const ShopScreen(),
+        ScoreboardScreen.routeName: (_) => const ScoreboardScreen(),
+        ProfileScreen.routeName: (_) => const ProfileScreen(),
+        AdminScreen.routeName: (_) => const AdminScreen(),
       },
     );
   }
