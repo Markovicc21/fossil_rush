@@ -1,12 +1,10 @@
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-
-import '../widgets/app_button.dart';
 import 'game_screen.dart';
 import 'shop_screen.dart';
 import 'profile_screen.dart';
 import 'scoreboard_screen.dart';
 import 'login_screen.dart';
+import '../widgets/image_button.dart';
 
 class MainMenuScreen extends StatelessWidget {
   const MainMenuScreen({super.key, required this.isLoggedin});
@@ -38,7 +36,7 @@ class MainMenuScreen extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   //PROFILE DUGME
-                  _imageButton(
+                  imageButton(
                     asset: 'assets/images/PROFILE.png',
                     width: 110,
                     height: 50,
@@ -47,7 +45,7 @@ class MainMenuScreen extends StatelessWidget {
                     },
                   ),
                   //LOGOUT DUGME
-                  _imageButton(
+                  imageButton(
                     asset: 'assets/images/EXIT.png',
                     width: 55,
                     height: 50,
@@ -69,7 +67,7 @@ class MainMenuScreen extends StatelessWidget {
                 const SizedBox(height: 28),
 
                 //PLAY DUGME
-                _imageButton(
+                imageButton(
                   asset: 'assets/images/PLAY.png',
                   width: 260,
                   onPressed: () {
@@ -78,7 +76,7 @@ class MainMenuScreen extends StatelessWidget {
                 ),
 
                 //SHOP DUGME
-                _imageButton(
+                imageButton(
                   asset: 'assets/images/SHOP.png',
                   width: 260,
                   onPressed: () {
@@ -87,7 +85,7 @@ class MainMenuScreen extends StatelessWidget {
                 ),
 
                 //SCOREBOARD DUGME
-                _imageButton(
+                imageButton(
                   asset: 'assets/images/SCORE.png',
                   width: 260,
                   onPressed: () {
@@ -118,7 +116,7 @@ class MainMenuScreen extends StatelessWidget {
                 const SizedBox(height: 28),
 
                 //PLAY DUGME
-                _imageButton(
+                imageButton(
                   asset: 'assets/images/PLAY.png',
                   width: 260,
                   onPressed: () {
@@ -127,7 +125,7 @@ class MainMenuScreen extends StatelessWidget {
                 ),
 
                 //LOGIN DUGME
-                _imageButton(
+                imageButton(
                   asset: 'assets/images/LOGIN.png',
                   width: 260,
                   onPressed: () {
@@ -141,6 +139,7 @@ class MainMenuScreen extends StatelessWidget {
       ],
     );
   }
+
   /*
   Widget _retroButton({
     required String text,
@@ -203,40 +202,4 @@ class MainMenuScreen extends StatelessWidget {
     );
   }
 */
-
-  Widget _imageButton({
-    required String asset,
-    required VoidCallback onPressed,
-    double width = 260,
-    double height = 100,
-  }) {
-    bool isPressed = false;
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: StatefulBuilder(
-        builder: (context, setState) {
-          void setPressed(bool v) => setState(() => isPressed = v);
-
-          return GestureDetector(
-            onTap: onPressed,
-            onTapDown: (_) => setPressed(true),
-            onTapUp: (_) => setPressed(false),
-            onTapCancel: () => setPressed(false),
-
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 90),
-              transform: Matrix4.translationValues(0, isPressed ? 3 : 0, 0),
-              child: Image.asset(
-                asset,
-                width: width,
-                height: height,
-                filterQuality: FilterQuality.none,
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
 }
