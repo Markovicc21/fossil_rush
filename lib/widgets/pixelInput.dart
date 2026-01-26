@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
 
-Widget pixelInput({required String hint, bool obscure = false}) {
+Widget pixelInput({
+  required String hint,
+  bool obscure = false,
+  required TextEditingController controller,
+}) {
   return TextField(
+    controller: controller,
     obscureText: obscure,
     style: const TextStyle(fontSize: 14, color: Color(0xFF2A1A12)),
     decoration: InputDecoration(
