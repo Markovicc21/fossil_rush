@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fossil_rush/screens/main_menu_screen.dart';
-import 'package:fossil_rush/services/auth_service.dart';
+import 'package:fossil_rush/services/auth/auth_service.dart';
 import 'package:fossil_rush/widgets/back_button.dart';
 import 'package:fossil_rush/widgets/image_button.dart';
 import 'package:fossil_rush/widgets/pixelInput.dart';

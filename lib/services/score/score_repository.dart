@@ -1,4 +1,4 @@
-import '../models/score_state.dart';
+import '../../models/score_state.dart';
 
 abstract class ScoreRepository {
   Future<ScoreState> getScore(String username);

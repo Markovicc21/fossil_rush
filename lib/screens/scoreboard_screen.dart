@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../services/auth_service.dart';
-import '../services/score_service.dart';
+import '../services/auth/auth_service.dart';
+import '../services/score/score_service.dart';
 import '../models/score_state.dart';
 import '../widgets/retro_panel.dart';
 

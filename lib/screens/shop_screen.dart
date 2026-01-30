@@ -13,10 +13,11 @@ import 'package:fossil_rush/widgets/retro_panel.dart';
 // - state se učitava i pamti po nalogu (SharedPreferences)
 // - username uzimamo iz AuthService.repo.session()
 // - buy/equip ide kroz ShopService.repo (LocalShopRepository)
+// - katalog (lista dinosa) ide kroz ShopService.catalogRepo (LocalShopCatalogRepository)
 
-import 'package:fossil_rush/services/auth_service.dart';
-import 'package:fossil_rush/services/shop_service.dart';
-import 'package:fossil_rush/services/shop_models.dart';
+import 'package:fossil_rush/services/auth/auth_service.dart';
+import 'package:fossil_rush/services/shop/shop_service.dart';
+import 'package:fossil_rush/services/shop/shop_models.dart';
 
 class ShopScreen extends StatefulWidget {
   const ShopScreen({super.key});
@@ -51,46 +52,19 @@ class _ShopScreenState extends State<ShopScreen> {
   // Samo da “natera” novi key i restartuje animaciju toast-a
   int _toastTick = 0;
 
-  // --------- SHOP ITEMS ----------
-  // Lista dinosa koji se prikazuju u listi
-  final List<_DinoItem> _items = const [
-    _DinoItem(
-      id: 'tard',
-      name: 'Tard',
-      price: 0,
-      assetPath: 'assets/characters/tard/previewTard1.png',
-    ),
-    _DinoItem(
-      id: 'cole',
-      name: 'Cole',
-      price: 200,
-      assetPath: 'assets/characters/cole/previewCole1.png',
-    ),
-    _DinoItem(
-      id: 'mort',
-      name: 'Mort',
-      price: 500,
-      assetPath: 'assets/characters/mort/previewMort1.png',
-    ),
-    _DinoItem(
-      id: 'mono',
-      name: 'Mono',
-      price: 350,
-      assetPath: 'assets/characters/mono/previewMono1.png',
-    ),
-    _DinoItem(
-      id: 'kuro',
-      name: 'Kuro',
-      price: 1000,
-      assetPath: 'assets/characters/kuro/previewKuro1.png',
-    ),
-  ];
+  // --------- SHOP CATALOG (NOVO) ----------
+  // Svi itemi iz kataloga (admin menja ovo)
+  List<ShopItem> _catalogAll = const [];
+
+  // Prikazuj samo enabled iteme u shop listi
+  List<ShopItem> get _itemsVisible =>
+      _catalogAll.where((e) => e.enabled).toList();
 
   @override
   void initState() {
     super.initState();
 
-    // NOVO: kad se ekran otvori -> uzmi session i učitaj shop state
+    // NOVO: kad se ekran otvori -> uzmi session i učitaj shop state + katalog
     _initShopForUser();
   }
 
@@ -115,12 +89,17 @@ class _ShopScreenState extends State<ShopScreen> {
     final ShopState s = await ShopService.repo.load(u);
     if (!mounted) return;
 
+    // NOVO: učitaj katalog (lista itema) iz ShopService.catalogRepo
+    final catalog = await ShopService.catalogRepo.loadCatalog();
+    if (!mounted) return;
+
     // upiši u UI state
     setState(() {
       _username = u;
       coins = s.coins;
       owned = {...s.owned};
       activeId = s.activeId;
+      _catalogAll = catalog;
       _loading = false;
     });
   }
@@ -148,7 +127,7 @@ class _ShopScreenState extends State<ShopScreen> {
   // ---------------- SHOP LOGIKA (BUY / EQUIP) ----------------
   // Ako nije kupljen -> kupi (ako ima coins)
   // Ako je kupljen -> equip
-  void _onBuyOrEquip(_DinoItem item) async {
+  void _onBuyOrEquip(ShopItem item) async {
     // NOVO: mora da postoji username (ulogovan user)
     if (_username == null) return;
 
@@ -257,11 +236,23 @@ class _ShopScreenState extends State<ShopScreen> {
   // Kartica koja uvek pokazuje trenutno aktivnog dinosa
   // (čita iz activeId)
   Widget _activeCard() {
-    // Nađi trenutno aktivnog u listi
-    final active = _items.firstWhere(
+    // Nađi trenutno aktivnog u katalogu (i ako je disabled, i dalje ga pokaži)
+    final active = _catalogAll.firstWhere(
       (e) => e.id == activeId,
-      // safety: ako activeId nije nađen, uzmi prvog
-      orElse: () => _items.first,
+      // safety: ako activeId nije nađen, uzmi prvog enabled ili prvog ikad
+      orElse: () {
+        final enabled = _catalogAll.where((e) => e.enabled).toList();
+        if (enabled.isNotEmpty) return enabled.first;
+        return _catalogAll.isNotEmpty
+            ? _catalogAll.first
+            : const ShopItem(
+                id: 'none',
+                name: 'None',
+                price: 0,
+                assetPath: 'assets/characters/tard/previewTard1.png',
+                enabled: true,
+              );
+      },
     );
 
     // DEBUG: da vidimo koju putanju ovaj ekran stvarno pokušava da učita
@@ -334,7 +325,7 @@ class _ShopScreenState extends State<ShopScreen> {
   //  ime + cena
   // dugme BUY / EQUIP / ACTIVE
   Widget _shopRow({
-    required _DinoItem item,
+    required ShopItem item,
     required bool isOwned,
     required bool isActive,
     required VoidCallback onTap,
@@ -451,9 +442,9 @@ class _ShopScreenState extends State<ShopScreen> {
 
           const Spacer(),
 
-          // Owned broj
+          // Owned broj (ukupan katalog je _catalogAll)
           Text(
-            'Owned: ${owned.length}/${_items.length}',
+            'Owned: ${owned.length}/${_catalogAll.length}',
             style: const TextStyle(
               fontSize: 12,
               color: Color(0xFFFFE7C2),
@@ -491,6 +482,8 @@ class _ShopScreenState extends State<ShopScreen> {
   // - dok učitava state -> spinner (da se ne vidi “reset”)
   @override
   Widget build(BuildContext context) {
+    final visibleItems = _itemsVisible;
+
     return Scaffold(
       body: Stack(
         children: [
@@ -513,26 +506,37 @@ class _ShopScreenState extends State<ShopScreen> {
                         _activeCard(),
                         const SizedBox(height: 10),
 
-                        // Scroll lista itema
+                        // Scroll lista itema (samo enabled)
                         Expanded(
-                          child: ListView.separated(
-                            padding: const EdgeInsets.all(12),
-                            itemCount: _items.length,
-                            separatorBuilder: (_, __) =>
-                                const SizedBox(height: 10),
-                            itemBuilder: (context, index) {
-                              final item = _items[index];
-                              final isOwned = owned.contains(item.id);
-                              final isActive = activeId == item.id;
+                          child: visibleItems.isEmpty
+                              ? const Center(
+                                  child: Text(
+                                    'No items enabled',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Color(0xFFFFE7C2),
+                                      height: 1.0,
+                                    ),
+                                  ),
+                                )
+                              : ListView.separated(
+                                  padding: const EdgeInsets.all(12),
+                                  itemCount: visibleItems.length,
+                                  separatorBuilder: (_, __) =>
+                                      const SizedBox(height: 10),
+                                  itemBuilder: (context, index) {
+                                    final item = visibleItems[index];
+                                    final isOwned = owned.contains(item.id);
+                                    final isActive = activeId == item.id;
 
-                              return _shopRow(
-                                item: item,
-                                isOwned: isOwned,
-                                isActive: isActive,
-                                onTap: () => _onBuyOrEquip(item),
-                              );
-                            },
-                          ),
+                                    return _shopRow(
+                                      item: item,
+                                      isOwned: isOwned,
+                                      isActive: isActive,
+                                      onTap: () => _onBuyOrEquip(item),
+                                    );
+                                  },
+                                ),
                         ),
 
                         const SizedBox(height: 10),
@@ -709,19 +713,4 @@ class _FloatingToastState extends State<_FloatingToast>
       },
     );
   }
-}
-
-// PODACI
-class _DinoItem {
-  final String id;
-  final String name;
-  final int price;
-  final String assetPath;
-
-  const _DinoItem({
-    required this.id,
-    required this.name,
-    required this.price,
-    required this.assetPath,
-  });
 }

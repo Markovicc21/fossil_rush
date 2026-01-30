@@ -1,4 +1,4 @@
-import '../models/score_state.dart';
+import '../../models/score_state.dart';
 import 'local_score_repository.dart';
 import 'score_repository.dart';
 

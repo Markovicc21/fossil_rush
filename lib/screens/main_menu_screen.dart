@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:fossil_rush/screens/admin_screen.dart';
 import 'package:fossil_rush/widgets/screen_slider.dart';
 import 'game_screen.dart';
 import 'shop_screen.dart';
@@ -122,7 +123,16 @@ class MainMenuScreen extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Image.asset('assets/images/logo.png', width: 300, height: 300),
+                GestureDetector(
+                  onLongPress: () {
+                    Navigator.pushNamed(context, AdminScreen.routeName);
+                  },
+                  child: Image.asset(
+                    'assets/images/logo.png',
+                    width: 260,
+                    filterQuality: FilterQuality.none,
+                  ),
+                ),
 
                 const SizedBox(height: 28),
 
