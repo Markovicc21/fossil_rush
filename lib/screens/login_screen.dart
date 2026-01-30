@@ -5,6 +5,8 @@ import 'main_menu_screen.dart';
 import '../widgets/image_button.dart';
 import '../widgets/pixelInput.dart';
 import '../widgets/back_button.dart';
+import '../widgets/screen_slider.dart';
+import '../widgets/retro_panel.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -39,21 +41,23 @@ class _LoginScreenState extends State<LoginScreen> {
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.all(12),
-              child: Container(
-                width: 36,
-                height: 32,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFD6B48A),
-                  border: Border.all(color: const Color(0xFF2A1A12), width: 2),
-                ),
-                child: Center(
-                  child: AppBackButton(
-                    asset: 'assets/images/ARROW_BACK.png',
-                    width: 18,
-                    height: 18,
-                    onPressed: () {
-                      Navigator.of(context).pop();
-                    },
+              child: SizedBox(
+                width: 46,
+                height: 46,
+                child: RetroPanel(
+                  fill: const Color(0xFF8B5A3C),
+                  padding: const EdgeInsets.all(6),
+                  shadowOffset: 2,
+
+                  child: Center(
+                    child: AppBackButton(
+                      asset: 'assets/images/ARROW_BACK.png',
+                      width: 18,
+                      height: 18,
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                      },
+                    ),
                   ),
                 ),
               ),
@@ -111,7 +115,9 @@ class _LoginScreenState extends State<LoginScreen> {
 
           TextButton(
             onPressed: () {
-              Navigator.pushNamed(context, RegisterScreen.routeName);
+              Navigator.of(
+                context,
+              ).push(ScreenSlider.slide(const RegisterScreen()));
             },
             child: const Text(
               'Register now!',
@@ -126,7 +132,6 @@ class _LoginScreenState extends State<LoginScreen> {
             width: 200,
             height: 80,
             onPressed: () async {
-              final nav = Navigator.of(context);
               final messenger = ScaffoldMessenger.of(context);
 
               final username = _usernameCtrl.text.trim();
@@ -155,7 +160,9 @@ class _LoginScreenState extends State<LoginScreen> {
                 return;
               }
 
-              nav.pushReplacementNamed(MainMenuScreen.loggedRouteName);
+              Navigator.of(context).push(
+                ScreenSlider.slide(const MainMenuScreen(isLoggedin: true)),
+              );
             },
           ),
         ],

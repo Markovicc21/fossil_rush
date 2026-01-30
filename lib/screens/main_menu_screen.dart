@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:fossil_rush/widgets/screen_slider.dart';
 import 'game_screen.dart';
 import 'shop_screen.dart';
 import 'profile_screen.dart';
@@ -41,7 +42,9 @@ class MainMenuScreen extends StatelessWidget {
                     width: 110,
                     height: 50,
                     onPressed: () {
-                      Navigator.pushNamed(context, ProfileScreen.routeName);
+                      Navigator.of(
+                        context,
+                      ).push(ScreenSlider.slide(const ProfileScreen()));
                     },
                   ),
                   //LOGOUT DUGME
@@ -50,7 +53,11 @@ class MainMenuScreen extends StatelessWidget {
                     width: 55,
                     height: 50,
                     onPressed: () {
-                      Navigator.pushNamed(context, MainMenuScreen.routeName);
+                      Navigator.of(context).push(
+                        ScreenSlider.slide(
+                          const MainMenuScreen(isLoggedin: false),
+                        ),
+                      );
                     },
                   ),
                 ],
@@ -80,7 +87,9 @@ class MainMenuScreen extends StatelessWidget {
                   asset: 'assets/images/SHOP.png',
                   width: 260,
                   onPressed: () {
-                    Navigator.pushNamed(context, ShopScreen.routeName);
+                    Navigator.of(
+                      context,
+                    ).push(ScreenSlider.slide(const ShopScreen()));
                   },
                 ),
 
@@ -89,7 +98,9 @@ class MainMenuScreen extends StatelessWidget {
                   asset: 'assets/images/SCORE.png',
                   width: 260,
                   onPressed: () {
-                    Navigator.pushNamed(context, ScoreboardScreen.routeName);
+                    Navigator.of(
+                      context,
+                    ).push(ScreenSlider.slide(const ScoreboardScreen()));
                   },
                 ),
               ],
@@ -129,7 +140,9 @@ class MainMenuScreen extends StatelessWidget {
                   asset: 'assets/images/LOGIN.png',
                   width: 260,
                   onPressed: () {
-                    Navigator.pushNamed(context, LoginScreen.routeName);
+                    Navigator.of(
+                      context,
+                    ).push(ScreenSlider.slide(const LoginScreen()));
                   },
                 ),
               ],

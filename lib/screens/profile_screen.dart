@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import '../widgets/back_button.dart';
+import '../widgets/retro_panel.dart';
 
 //  PROFILE SCREEN (glavni ekran profila)
 class ProfileScreen extends StatelessWidget {
@@ -103,13 +104,13 @@ class ProfileScreen extends StatelessWidget {
 
                               // OSTATK EKRANA (3 PANELA)
                               Expanded(
-                                child: Column(
-                                  children: [
-                                    //  PANEL 1: HEADER (avatar + username)
-                                    Expanded(
-                                      flex: 36,
-                                      child: Align(
-                                        alignment: Alignment.bottomCenter,
+                                child: SingleChildScrollView(
+                                  padding: const EdgeInsets.only(bottom: 12),
+                                  child: Column(
+                                    children: [
+                                      //  PANEL 1: HEADER (avatar + username)
+                                      Align(
+                                        alignment: Alignment.topCenter,
                                         child: _panel(
                                           width: headerW,
                                           minHeight: 200,
@@ -125,56 +126,61 @@ class ProfileScreen extends StatelessWidget {
                                             mainAxisAlignment:
                                                 MainAxisAlignment.center,
                                             children: [
-                                              // Avatar box (za sada default ikonica)
-                                              Container(
-                                                width: 104,
-                                                height: 104,
-                                                decoration: BoxDecoration(
-                                                  color: const Color(
-                                                    0xFFD6B48A,
-                                                  ),
-                                                  border: Border.all(
-                                                    color: const Color(
-                                                      0xFF2A1A12,
+                                              Center(
+                                                child: SizedBox(
+                                                  width: 104,
+                                                  height: 104,
+                                                  child: RetroPanel(
+                                                    fill: const Color(
+                                                      0xFFD6B48A,
                                                     ),
-                                                    width: 3,
+                                                    padding:
+                                                        const EdgeInsets.all(
+                                                          12,
+                                                        ),
+                                                    shadowOffset: 2,
+                                                    child: const Center(
+                                                      child: Icon(
+                                                        Icons.person,
+                                                        size: 54,
+                                                        color: Color(
+                                                          0xFF2A1A12,
+                                                        ),
+                                                      ),
+                                                    ),
                                                   ),
-                                                ),
-                                                child: const Icon(
-                                                  Icons.person,
-                                                  size: 54,
-                                                  color: Color(0xFF2A1A12),
                                                 ),
                                               ),
 
                                               const SizedBox(height: 14),
 
                                               // Username iz session-a
-                                              Text(
-                                                username,
-                                                style: const TextStyle(
-                                                  fontSize: 30,
-                                                  color: Color(0xFFFFE7C2),
-                                                  shadows: [
-                                                    Shadow(
-                                                      offset: Offset(2, 2),
-                                                      color: Color(0xFF2A1A12),
-                                                    ),
-                                                  ],
+                                              Center(
+                                                child: Text(
+                                                  username,
+                                                  style: const TextStyle(
+                                                    fontSize: 30,
+                                                    color: Color(0xFFFFE7C2),
+                                                    shadows: [
+                                                      Shadow(
+                                                        offset: Offset(2, 2),
+                                                        color: Color(
+                                                          0xFF2A1A12,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
                                                 ),
                                               ),
                                             ],
                                           ),
                                         ),
                                       ),
-                                    ),
 
-                                    const SizedBox(height: 26),
+                                      const SizedBox(height: 26),
 
-                                    //  PANEL 2: STATS (3 reda)
-                                    Expanded(
-                                      flex: 34,
-                                      child: Align(
+                                      //  PANEL 2: STATS (3 reda)
+                                      Align(
                                         alignment: Alignment.topCenter,
                                         child: _panel(
                                           width: cardW,
@@ -226,14 +232,11 @@ class ProfileScreen extends StatelessWidget {
                                           ),
                                         ),
                                       ),
-                                    ),
 
-                                    const SizedBox(height: 18),
+                                      const SizedBox(height: 18),
 
-                                    //  PANEL 3: ACHIEVEMENTS
-                                    Expanded(
-                                      flex: 30,
-                                      child: Align(
+                                      //  PANEL 3: ACHIEVEMENTS
+                                      Align(
                                         alignment: Alignment.topCenter,
                                         child: _panel(
                                           width: cardW,
@@ -278,10 +281,10 @@ class ProfileScreen extends StatelessWidget {
                                           ),
                                         ),
                                       ),
-                                    ),
 
-                                    const SizedBox(height: 10),
-                                  ],
+                                      const SizedBox(height: 10),
+                                    ],
+                                  ),
                                 ),
                               ),
                             ],
@@ -303,21 +306,23 @@ class ProfileScreen extends StatelessWidget {
   static Widget _topBar(BuildContext context) {
     return Row(
       children: [
-        Container(
-          width: 36,
-          height: 32,
-          decoration: BoxDecoration(
-            color: const Color(0xFFD6B48A),
-            border: Border.all(color: const Color(0xFF2A1A12), width: 2),
-          ),
-          child: Center(
-            child: AppBackButton(
-              asset: 'assets/images/ARROW_BACK.png',
-              width: 18,
-              height: 18,
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
+        SizedBox(
+          width: 46,
+          height: 46,
+          child: RetroPanel(
+            fill: const Color(0xFF8B5A3C),
+            padding: const EdgeInsets.all(6),
+            shadowOffset: 2,
+
+            child: Center(
+              child: AppBackButton(
+                asset: 'assets/images/ARROW_BACK.png',
+                width: 18,
+                height: 18,
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+              ),
             ),
           ),
         ),
@@ -357,19 +362,15 @@ class ProfileScreen extends StatelessWidget {
   }) {
     return SizedBox(
       width: width,
-      child: Container(
+      child: ConstrainedBox(
         constraints: minHeight != null
             ? BoxConstraints(minHeight: minHeight)
             : const BoxConstraints(),
-        padding: padding,
-        decoration: BoxDecoration(
-          color: const Color(0xFF8B5A3C),
-          border: Border.all(color: const Color(0xFF2A1A12), width: 3),
-          boxShadow: const [
-            BoxShadow(offset: Offset(4, 4), color: Color(0xFF2A1A12)),
-          ],
+        child: RetroPanel(
+          fill: const Color(0xFF8B5A3C),
+          padding: padding,
+          child: child,
         ),
-        child: child,
       ),
     );
   }
@@ -453,27 +454,29 @@ class _AchBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 66,
-      decoration: BoxDecoration(
-        color: const Color(0xFFD6B48A),
-        border: Border.all(color: const Color(0xFF2A1A12), width: 2),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, size: 20, color: const Color(0xFF2A1A12)),
-          const SizedBox(height: 6),
-          Text(
-            title,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 11,
-              color: Color(0xFF2A1A12),
-              height: 1.0,
+    return SizedBox(
+      height: 80,
+      child: RetroPanel(
+        fill: const Color(0xFFD6B48A),
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+        shadowOffset: 2,
+
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 20, color: const Color(0xFF2A1A12)),
+            const SizedBox(height: 6),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 11,
+                color: Color(0xFF2A1A12),
+                height: 1.0,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

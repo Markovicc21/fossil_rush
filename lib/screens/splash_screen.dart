@@ -53,7 +53,7 @@ class _SplashScreenState extends State<SplashScreen>
     if (!_didPrecache) {
       _didPrecache = true;
       precacheImage(const AssetImage('assets/images/logo.png'), context);
-      precacheImage(const AssetImage('assets/images/jurassic.png'), context);
+      precacheImage(const AssetImage('assets/images/jurassic.jpg'), context);
     }
   }
 

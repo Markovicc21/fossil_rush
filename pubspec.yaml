@@ -23,6 +23,11 @@ flutter:
 
   assets:
     - assets/images/
+    - assets/characters/tard/
+    - assets/characters/cole/
+    - assets/characters/mort/
+    - assets/characters/mono/
+    - assets/characters/kuro/
 
   fonts:
     - family: Pixel

@@ -4,6 +4,7 @@ import 'package:fossil_rush/services/auth_service.dart';
 import 'package:fossil_rush/widgets/back_button.dart';
 import 'package:fossil_rush/widgets/image_button.dart';
 import 'package:fossil_rush/widgets/pixelInput.dart';
+import '../widgets/retro_panel.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -82,21 +83,23 @@ class _RegisterScreenState extends State<RegisterScreen> {
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.all(12),
-              child: Container(
-                width: 36,
-                height: 32,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFD6B48A),
-                  border: Border.all(color: const Color(0xFF2A1A12), width: 2),
-                ),
-                child: Center(
-                  child: AppBackButton(
-                    asset: 'assets/images/ARROW_BACK.png',
-                    width: 18,
-                    height: 18,
-                    onPressed: () {
-                      Navigator.of(context).pop();
-                    },
+              child: SizedBox(
+                width: 46,
+                height: 46,
+                child: RetroPanel(
+                  fill: const Color(0xFF8B5A3C),
+                  padding: const EdgeInsets.all(6),
+                  shadowOffset: 2,
+
+                  child: Center(
+                    child: AppBackButton(
+                      asset: 'assets/images/ARROW_BACK.png',
+                      width: 18,
+                      height: 18,
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                      },
+                    ),
                   ),
                 ),
               ),
