@@ -19,7 +19,7 @@ class _AdminScreenState extends State<AdminScreen> {
   @override
   void initState() {
     super.initState();
-    _loadCatalog(); // 🔥 podsetnik: učitavanje kataloga odmah pri ulasku u admin
+    _loadCatalog(); //  učitavanje kataloga odmah pri ulasku u admin
   }
 
   Future<void> _loadCatalog() async {
@@ -34,7 +34,7 @@ class _AdminScreenState extends State<AdminScreen> {
       setState(() => _items = const []);
     }
 
-    // 🔥 podsetnik: BEZ return u finally (warning), samo ovako na kraju
+    // \ BEZ return u finally (warning), samo ovako na kraju
     if (!mounted) return;
     setState(() => _loading = false);
   }
@@ -47,7 +47,7 @@ class _AdminScreenState extends State<AdminScreen> {
   void _handleBack() {
     final nav = Navigator.of(context);
 
-    // 🔥 podsetnik: web refresh / direktan ulaz u /admin -> nema gde da popuje (blank)
+    //  web refresh / direktan ulaz u /admin -> nema gde da popuje (blank)
     if (nav.canPop()) {
       nav.pop();
     } else {
@@ -105,7 +105,7 @@ class _AdminScreenState extends State<AdminScreen> {
         final size = MediaQuery.of(ctx).size;
 
         return Center(
-          // 🔥 podsetnik: Center + ConstrainedBox rešava fullscreen dialog na WEB-u
+          //  Center + ConstrainedBox rešava fullscreen dialog na WEB-u
           child: ConstrainedBox(
             constraints: BoxConstraints(
               maxWidth: 360,
@@ -281,7 +281,7 @@ class _AdminScreenState extends State<AdminScreen> {
 
   //========================DELETE==================================================
   Future<void> _deleteItem(String id) async {
-    // 🔥 podsetnik: OBAVEZNO _showRetroDialog (ne showDialog) da ne bude fullscreen na web
+    //  OBAVEZNO _showRetroDialog (ne showDialog) da ne bude fullscreen na web
     final ok = await _showRetroDialog<bool>(
       builder: (ctx) {
         return _retroDialogShell(
@@ -367,7 +367,7 @@ class _AdminScreenState extends State<AdminScreen> {
 
   //===========================RESET=============================================
   Future<void> _resetCatalog() async {
-    // 🔥 podsetnik: OBAVEZNO _showRetroDialog (ne showDialog) da ne bude fullscreen na web
+    // OBAVEZNO _showRetroDialog (ne showDialog) da ne bude fullscreen na web
     final ok = await _showRetroDialog<bool>(
       builder: (ctx) {
         return _retroDialogShell(
@@ -475,7 +475,7 @@ class _AdminScreenState extends State<AdminScreen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // 🔥 podsetnik: 2-redni layout da NIKAD ne bude RenderFlex overflow udesno
+          //  2-redni layout da NIKAD ne bude RenderFlex overflow udesno
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -587,7 +587,7 @@ class _AdminScreenState extends State<AdminScreen> {
       onTap: onPressed,
       child: RetroPanel(
         fill: color,
-        // 🔥 podsetnik: manji padding da stane u fiksnu širinu
+        // : manji padding da stane u fiksnu širinu
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
         child: Center(
           child: Text(
@@ -614,7 +614,7 @@ class _AdminScreenState extends State<AdminScreen> {
     return GestureDetector(
       onTap: onPressed,
       child: SizedBox(
-        height: 48, // 🔥 podsetnik: pixel font = fiksna visina dugmeta
+        height: 48, //  pixel font = fiksna visina dugmeta
         child: RetroPanel(
           fill: color,
           padding: const EdgeInsets.symmetric(horizontal: 14),
