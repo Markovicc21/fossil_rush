@@ -76,96 +76,93 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Widget _loginBox(BuildContext context) {
-    return Container(
+    return SizedBox(
       width: 300,
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: const Color(0xFF8B5A3C),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFF8B5A3C), width: 3),
-        boxShadow: const [
-          BoxShadow(offset: Offset(4, 4), color: Color(0xFF2A1A12)),
-        ],
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          //NASLOV
-          const Text(
-            'LOGIN',
-            style: TextStyle(
-              fontSize: 22,
-              color: Color(0xFFFFE7C2),
-              shadows: [Shadow(offset: Offset(2, 2), color: Color(0xFF2A1A12))],
+      child: RetroPanel(
+        fill: const Color(0xFFA56A43),
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            //NASLOV
+            const Text(
+              'LOGIN',
+              style: TextStyle(
+                fontSize: 22,
+                color: Color(0xFFFFE7C2),
+                shadows: [
+                  Shadow(offset: Offset(2, 2), color: Color(0xFF2A1A12)),
+                ],
+              ),
             ),
-          ),
-          const SizedBox(height: 16),
+            const SizedBox(height: 16),
 
-          //USERNAME
-          pixelInput(hint: 'Enter Username', controller: _usernameCtrl),
-          const SizedBox(height: 10),
-          //PASSWORD
-          pixelInput(
-            hint: 'Enter Password',
-            obscure: true,
-            controller: _passwordCtrl,
-          ),
-
-          const SizedBox(height: 15),
-
-          TextButton(
-            onPressed: () {
-              Navigator.of(
-                context,
-              ).push(ScreenSlider.slide(const RegisterScreen()));
-            },
-            child: const Text(
-              'Register now!',
-              style: TextStyle(color: Color(0xFF4E2A14), fontSize: 12),
+            //USERNAME
+            pixelInput(hint: 'Enter Username', controller: _usernameCtrl),
+            const SizedBox(height: 10),
+            //PASSWORD
+            pixelInput(
+              hint: 'Enter Password',
+              obscure: true,
+              controller: _passwordCtrl,
             ),
-          ),
 
-          const SizedBox(height: 1),
-          //LOGIN DUGME
-          imageButton(
-            asset: 'assets/images/LOG_IN.png',
-            width: 200,
-            height: 80,
-            onPressed: () async {
-              final messenger = ScaffoldMessenger.of(context);
+            const SizedBox(height: 15),
 
-              final username = _usernameCtrl.text.trim();
-              final password = _passwordCtrl.text;
+            TextButton(
+              onPressed: () {
+                Navigator.of(
+                  context,
+                ).push(ScreenSlider.slide(const RegisterScreen()));
+              },
+              child: const Text(
+                'Register now!',
+                style: TextStyle(color: Color(0xFFFFE7C2), fontSize: 12),
+              ),
+            ),
 
-              if (username.isEmpty || password.isEmpty) {
-                messenger.showSnackBar(
-                  const SnackBar(
-                    content: Text('Invalid username or password!'),
-                  ),
+            const SizedBox(height: 1),
+            //LOGIN DUGME
+            imageButton(
+              asset: 'assets/images/LOG_IN.png',
+              width: 200,
+              height: 80,
+              onPressed: () async {
+                final messenger = ScaffoldMessenger.of(context);
+
+                final username = _usernameCtrl.text.trim();
+                final password = _passwordCtrl.text;
+
+                if (username.isEmpty || password.isEmpty) {
+                  messenger.showSnackBar(
+                    const SnackBar(
+                      content: Text('Invalid username or password!'),
+                    ),
+                  );
+                  return;
+                }
+
+                final res = await AuthService.repo.login(
+                  username: username,
+                  password: password,
                 );
-                return;
-              }
 
-              final res = await AuthService.repo.login(
-                username: username,
-                password: password,
-              );
+                if (!mounted) return;
 
-              if (!mounted) return;
+                if (!res.ok) {
+                  messenger.showSnackBar(
+                    SnackBar(content: Text(res.message ?? 'Login failed')),
+                  );
+                  return;
+                }
 
-              if (!res.ok) {
-                messenger.showSnackBar(
-                  SnackBar(content: Text(res.message ?? 'Login failed')),
+                Navigator.of(context).push(
+                  ScreenSlider.slide(const MainMenuScreen(isLoggedin: true)),
                 );
-                return;
-              }
-
-              Navigator.of(context).push(
-                ScreenSlider.slide(const MainMenuScreen(isLoggedin: true)),
-              );
-            },
-          ),
-        ],
+              },
+            ),
+          ],
+        ),
       ),
     );
   }

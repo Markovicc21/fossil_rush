@@ -809,12 +809,8 @@ class DinoRun extends FlameGame with TapCallbacks {
   // ===================== INPUT ================================
   @override
   void onTapDown(TapDownEvent event) {
-    // ako je dead - restart (full reset
-    if (dead) {
-      _resetRunState(fullReset: true);
-      _spawnTimer.start();
-      return;
-    }
+    // Ako je dead, tap ne radi nista (restart je samo preko RETRY dugmeta)
+    if (dead) return;
 
     // drzi tap  enable hold
     _jumpHeld = true;

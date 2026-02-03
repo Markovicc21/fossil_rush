@@ -79,7 +79,11 @@ class MainMenuScreen extends StatelessWidget {
                   asset: 'assets/images/PLAY.png',
                   width: 260,
                   onPressed: () {
-                    Navigator.pushNamed(context, GameScreen.routeName);
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const GameScreen(isLoggedIn: true),
+                      ),
+                    );
                   },
                 ),
 
@@ -141,7 +145,11 @@ class MainMenuScreen extends StatelessWidget {
                   asset: 'assets/images/PLAY.png',
                   width: 260,
                   onPressed: () {
-                    Navigator.pushNamed(context, GameScreen.routeName);
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const GameScreen(isLoggedIn: false),
+                      ),
+                    );
                   },
                 ),
 

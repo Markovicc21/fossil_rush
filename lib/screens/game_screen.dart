@@ -7,8 +7,9 @@ import '../overlays/game_over_overlay.dart';
 import '../overlays/pause_overlay.dart';
 
 class GameScreen extends StatefulWidget {
-  const GameScreen({super.key});
+  const GameScreen({super.key, required this.isLoggedIn});
   static const routeName = '/game';
+  final bool isLoggedIn;
 
   @override
   State<GameScreen> createState() => _GameScreenState();
@@ -54,7 +55,8 @@ class _GameScreenState extends State<GameScreen> {
           game: DinoRun(),
           overlayBuilderMap: {
             'Hud': (ctx, game) => HudOverlay(game: game),
-            'GameOver': (ctx, game) => GameOverOverlay(game: game),
+            'GameOver': (ctx, game) =>
+                GameOverOverlay(game: game, startedLoggedIn: widget.isLoggedIn),
             'PauseMenu': (ctx, game) => PauseMenuOverlay(game: game),
           },
           initialActiveOverlays: const ['Hud'],

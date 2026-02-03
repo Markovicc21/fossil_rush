@@ -35,7 +35,7 @@ class MyApp extends StatelessWidget {
         MainMenuScreen.routeName: (_) =>
             const MainMenuScreen(isLoggedin: false),
         '/main-menu-logged': (_) => const MainMenuScreen(isLoggedin: true),
-        GameScreen.routeName: (_) => const GameScreen(),
+        GameScreen.routeName: (_) => const GameScreen(isLoggedIn: false),
         ShopScreen.routeName: (_) => const ShopScreen(),
         ScoreboardScreen.routeName: (_) => const ScoreboardScreen(),
         ProfileScreen.routeName: (_) => const ProfileScreen(),

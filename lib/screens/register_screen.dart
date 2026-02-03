@@ -119,57 +119,54 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   Widget _registerBox(BuildContext context) {
-    return Container(
+    return SizedBox(
       width: 300,
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: const Color(0xFF8B5A3C),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFF8B5A3C), width: 3),
-        boxShadow: const [
-          BoxShadow(offset: Offset(4, 4), color: Color(0xFF2A1A12)),
-        ],
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          //NASLOV
-          const Text(
-            'REGISTER',
-            style: TextStyle(
-              fontSize: 22,
-              color: Color(0xFFFFE7C2),
-              shadows: [Shadow(offset: Offset(2, 2), color: Color(0xFF2A1A12))],
+      child: RetroPanel(
+        fill: const Color(0xFFA56A43),
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            //NASLOV
+            const Text(
+              'REGISTER',
+              style: TextStyle(
+                fontSize: 22,
+                color: Color(0xFFFFE7C2),
+                shadows: [
+                  Shadow(offset: Offset(2, 2), color: Color(0xFF2A1A12)),
+                ],
+              ),
             ),
-          ),
 
-          const SizedBox(height: 16),
-          //USERNAME
-          pixelInput(hint: 'Create Username', controller: _usernameCtrl),
-          const SizedBox(height: 10),
-          //PASSWORD
-          pixelInput(
-            hint: 'Create Password',
-            obscure: true,
-            controller: _passwordCtrl,
-          ),
-          const SizedBox(height: 10),
-          //CONFIRM PASSWORD
-          pixelInput(
-            hint: 'Confirm Password',
-            obscure: true,
-            controller: _confirmCtrl,
-          ),
+            const SizedBox(height: 16),
+            //USERNAME
+            pixelInput(hint: 'Create Username', controller: _usernameCtrl),
+            const SizedBox(height: 10),
+            //PASSWORD
+            pixelInput(
+              hint: 'Create Password',
+              obscure: true,
+              controller: _passwordCtrl,
+            ),
+            const SizedBox(height: 10),
+            //CONFIRM PASSWORD
+            pixelInput(
+              hint: 'Confirm Password',
+              obscure: true,
+              controller: _confirmCtrl,
+            ),
 
-          const SizedBox(height: 10),
+            const SizedBox(height: 10),
 
-          imageButton(
-            asset: 'assets/images/REGISTER.png',
-            width: 200,
-            height: 80,
-            onPressed: _doRegister,
-          ),
-        ],
+            imageButton(
+              asset: 'assets/images/REGISTER.png',
+              width: 200,
+              height: 80,
+              onPressed: _doRegister,
+            ),
+          ],
+        ),
       ),
     );
   }
