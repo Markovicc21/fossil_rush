@@ -1,12 +1,12 @@
 import 'package:flame/components.dart';
 import 'package:flame/collisions.dart';
 import 'package:flame/cache.dart';
+import 'dart:ui';
 
 // Stanja animacije igraca.
 enum PlayerAnim { move, jump, hurt, dead }
 
-class CharacterPlayer extends SpriteAnimationGroupComponent<PlayerAnim>
-    with HasGameRef {
+class CharacterPlayer extends SpriteAnimationGroupComponent<PlayerAnim> {
   // - ucitava sprite sheet-ove po characterId
   // - kontrolise logiku animacija (jump/hurt/dead)
 
@@ -27,7 +27,40 @@ class CharacterPlayer extends SpriteAnimationGroupComponent<PlayerAnim>
     super.position,
     super.size,
     super.anchor,
-  });
+  }) {
+    // Pretpostavka: preloadImages je pozvan pre kreiranja komponente.
+    animations = {
+      PlayerAnim.move: _buildAnim(
+        _assetPath(PlayerAnim.move),
+        moveFrames,
+        moveStepTime,
+        loop: true,
+      ),
+      PlayerAnim.jump: _buildAnim(
+        _assetPath(PlayerAnim.jump),
+        jumpFrames,
+        jumpStepTime,
+        loop: false,
+      ),
+      PlayerAnim.hurt: _buildAnim(
+        _assetPath(PlayerAnim.hurt),
+        hurtFrames,
+        hurtStepTime,
+        loop: false,
+      ),
+      PlayerAnim.dead: _buildAnim(
+        _assetPath(PlayerAnim.dead),
+        deadFrames,
+        deadStepTime,
+        loop: false,
+      ),
+    };
+
+    current = PlayerAnim.move;
+    if (size == Vector2.zero()) {
+      size = frameSize.clone();
+    }
+  }
 
   final String characterId;
   final Vector2 frameSize;
@@ -46,6 +79,10 @@ class CharacterPlayer extends SpriteAnimationGroupComponent<PlayerAnim>
   final Vector2? hitboxSize;
   final Vector2? hitboxOffset;
 
+  // Koristimo poseban Images cache sa prefiksom "assets/"
+  // da bismo ucitavali fajlove iz assets/characters/...
+  static final Images _assetImages = Images(prefix: 'assets/');
+
   // Interna stanja za pravila animacija:
   // dead ima prioritet, jump se ne prekida, hurt ne prekida dead/jump.
   bool _isDead = false;
@@ -55,37 +92,6 @@ class CharacterPlayer extends SpriteAnimationGroupComponent<PlayerAnim>
   @override
   Future<void> onLoad() async {
     await super.onLoad();
-
-    // Ucitavanje svih animacija iz postojecih fajlova.
-    animations = {
-      PlayerAnim.move: _buildAnim(
-        'characters/$characterId/move.png',
-        moveFrames,
-        moveStepTime,
-        loop: true,
-      ),
-      PlayerAnim.jump: _buildAnim(
-        'characters/$characterId/jump.png',
-        jumpFrames,
-        jumpStepTime,
-        loop: false,
-      ),
-      PlayerAnim.hurt: _buildAnim(
-        'characters/$characterId/hurt.png',
-        hurtFrames,
-        hurtStepTime,
-        loop: false,
-      ),
-      PlayerAnim.dead: _buildAnim(
-        'characters/$characterId/dead.png',
-        deadFrames,
-        deadStepTime,
-        loop: false,
-      ),
-    };
-
-    current = PlayerAnim.move;
-    size = size == Vector2.zero() ? frameSize.clone() : size;
 
     if (addHitbox) {
       add(
@@ -105,7 +111,7 @@ class CharacterPlayer extends SpriteAnimationGroupComponent<PlayerAnim>
   }) {
     // Animacija iz cache-a (preload preporucen zbog performansi).
     return SpriteAnimation.fromFrameData(
-      gameRef.images.fromCache(path),
+      _assetImages.fromCache(path),
       SpriteAnimationData.sequenced(
         amount: frames,
         stepTime: stepTime,
@@ -170,16 +176,82 @@ class CharacterPlayer extends SpriteAnimationGroupComponent<PlayerAnim>
     animationTicker?.reset();
   }
 
+  // Reset stanja kad se run restartuje.
+  void resetState() {
+    _isDead = false;
+    _isJumping = false;
+    _hurtLeft = 0;
+    current = PlayerAnim.move;
+    animationTicker?.reset();
+  }
+
   bool get isDead => _isDead;
   bool get isJumping => _isJumping;
 
+  // Pravougaonik tela (umanjen) za realniji sudar.
+  // - sirina ~55%
+  // - visina ~70%
+  // - pomeren ka dnu i centriran po X osi
+  Rect get bodyRect {
+    final double bodyW = size.x * 0.55;
+    final double bodyH = size.y * 0.70;
+    final double x = position.x + (size.x - bodyW) / 2;
+    final double y = position.y + (size.y - bodyH);
+    return Rect.fromLTWH(x, y, bodyW, bodyH);
+  }
+
   // Preload sprite sheet-ova da ne "stuca" pri prvom prikazu.
-  static Future<void> preloadImages(Images images, String characterId) async {
-    await images.loadAll([
-      'characters/$characterId/move.png',
-      'characters/$characterId/jump.png',
-      'characters/$characterId/hurt.png',
-      'characters/$characterId/dead.png',
-    ]);
+  static Future<void> preloadImages(String characterId) async {
+    final paths = _assetPathsFor(characterId);
+    await _assetImages.loadAll(paths);
+  }
+
+  String _assetPath(PlayerAnim anim) {
+    // Mapira karakter + animaciju na realna imena fajlova u assets/.
+    final paths = _assetPathsFor(characterId);
+    return paths[anim.index];
+  }
+
+  // Centralni spisak putanja za svaki karakter.
+  static List<String> _assetPathsFor(String id) {
+    switch (id) {
+      case 'cole':
+        return [
+          'characters/cole/moveCole.png',
+          'characters/cole/jumpCole.png',
+          'characters/cole/hurtCole.png',
+          'characters/cole/deadCole.png',
+        ];
+      case 'kuro':
+        return [
+          'characters/kuro/moveKuro.png',
+          'characters/kuro/jumpKuro.png',
+          'characters/kuro/hurtKuro.png',
+          'characters/kuro/deadKuro.png',
+        ];
+      case 'mono':
+        return [
+          'characters/mono/moveMono.png',
+          'characters/mono/jumpMono.png',
+          'characters/mono/hurtMono.png',
+          'characters/mono/deadMono.png',
+        ];
+      case 'mort':
+        return [
+          'characters/mort/moveMort.png',
+          'characters/mort/jump.png',
+          'characters/mort/hurtMortt.png',
+          'characters/mort/dead.png',
+        ];
+      case 'tard':
+        return [
+          'characters/tard/moveTardt.png',
+          'characters/tard/jump.png',
+          'characters/tard/hurtTardt.png',
+          'characters/tard/dead.png',
+        ];
+      default:
+        throw ArgumentError('Unknown characterId: $id');
+    }
   }
 }

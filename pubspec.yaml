@@ -26,6 +26,7 @@ flutter:
 
   assets:
     - assets/images/
+    - assets/enemies/
     - assets/characters/tard/
     - assets/characters/cole/
     - assets/characters/mort/

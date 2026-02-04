@@ -5,9 +5,11 @@ import 'package:flutter/material.dart';
 import 'package:flame/components.dart';
 import '../services/auth/auth_service.dart';
 import '../services/score/score_service.dart';
-import 'obstacle.dart';
+import '../services/shop/shop_service.dart';
 import 'dart:math';
 import 'layout/game_layout.dart';
+import 'components/character_player.dart';
+import 'components/enemy_sprite.dart';
 
 // ===================== POWER UPS =========================
 // Tipovi power-upova koje može pokupiti tokom run-a
@@ -53,8 +55,8 @@ class DinoRun extends FlameGame with TapCallbacks {
   // ground na kojoj igrac stoji
   late final RectangleComponent ground;
 
-  // player je za sada kockica (kasnije sprite iz shop-a)
-  late final RectangleComponent player;
+  // player je animirani sprite (CharacterPlayer)
+  late final CharacterPlayer player;
 
   // Random generator za spawner i power-up logiku
   final _rng = Random();
@@ -63,11 +65,11 @@ class DinoRun extends FlameGame with TapCallbacks {
   // Timer koji kuca cesto, ali pravi spawn samo kad mu dozvolim(_nextSpawnIn)
   late final Timer _spawnTimer;
 
-  // Lista svih prepreka trenutno u svetu
-  final List<Obstacle> _obstacles = [];
+  // Lista svih neprijatelja trenutno u svetu
+  final List<EnemySprite> _obstacles = [];
 
   // Near-miss tracking: da ne dobije bonus vise puta na istoj prepreci
-  final Set<Obstacle> _nearMissed = {};
+  final Set<EnemySprite> _nearMissed = {};
 
   // Cooldown  do sledece dozvoljene prepreke
   // Ovo garantuje razmak, bez nemogucih kombinacija
@@ -282,11 +284,31 @@ class DinoRun extends FlameGame with TapCallbacks {
     );
     add(ground);
 
-    // PLAYER (kocka)
-    player = RectangleComponent(
+    // Enemy sprite sheet preload (da ne stuca pri prvom spawnu)
+    await EnemySprite.preloadImages('doux');
+    await EnemySprite.preloadImages('kira');
+    await EnemySprite.preloadImages('olaf');
+    await EnemySprite.preloadImages('vita');
+
+    // PLAYER (aktivni dino iz shop-a, default = tard)
+    String activeId = 'tard';
+    final session = await AuthService.repo.session();
+    final username = session?.username;
+    if (username != null && username.isNotEmpty) {
+      try {
+        final state = await ShopService.repo.load(username);
+        activeId = state.activeId;
+      } catch (_) {
+        activeId = 'tard';
+      }
+    }
+
+    await CharacterPlayer.preloadImages(activeId);
+    player = CharacterPlayer(
+      characterId: activeId,
+      frameSize: Vector2(24, 24),
       position: Vector2(60, 110),
-      size: Vector2(18, 18),
-      paint: Paint()..color = const Color(0xFF00FF88),
+      size: Vector2(54, 54),
     );
     add(player);
 
@@ -315,8 +337,9 @@ class DinoRun extends FlameGame with TapCallbacks {
 
     if (fullReset) lives = 3;
 
-    // reset player pozicije i fizike
+    // reset player pozicije i stanja animacije
     player.position = Vector2(60, 110);
+    player.resetState();
     vy = 0;
     onGround = true;
 
@@ -423,48 +446,40 @@ class DinoRun extends FlameGame with TapCallbacks {
       return;
     }
 
-    // tezine po fazama
-    final lw = _lowWeight();
-    final hw = _highWeight();
-    final fw = _flyingWeight();
-    final sum = lw + hw + fw;
-
-    // random izbor prepreke
-    final r = _rng.nextDouble() * sum;
-
-    // dimenzije i pozicija
-    double w, h, y;
-    bool isFlying = false;
+    // Dva ground enemy + dva flying enemy
+    const groundIds = ['doux', 'olaf'];
+    const flyingIds = ['kira', 'vita'];
+    final bool isFlying = _rng.nextBool();
+    final String enemyId = isFlying
+        ? flyingIds[_rng.nextInt(flyingIds.length)]
+        : groundIds[_rng.nextInt(groundIds.length)];
 
     // VAZNO: sve vezano za REAL ground top
     final groundTop = _groundTopY;
 
-    if (r < lw) {
-      // LOW prepreka
-      w = 16;
-      h = 22;
-      y = groundTop - h;
-    } else if (r < lw + hw) {
-      // HIGH prepreka
-      w = 16;
-      h = 34;
-      y = groundTop - h;
-    } else {
-      // FLYING
-      isFlying = true;
-      w = 18;
-      h = 16;
+    // doux/kira/olaf/vita: 72x24 -> 3 frame-a po 24x24
+    const double baseW = 24;
+    const double baseH = 24;
+    const double scale = 1.6;
 
-      // isti razmak kao ranije, samo relativno na ground
-      y = groundTop - 24 - h;
-    }
+    final double w = baseW * scale;
+    final double h = baseH * scale;
 
-    // helper za spawn jedne prepreke
+    // Ground enemy: Y resava EnemySprite preko groundY
+    final double y = isFlying ? (groundTop - h - 18) : 0;
+
+    // helper za spawn jednog neprijatelja
     void spawnOne(double xOffset) {
-      final o = Obstacle(
+      final o = EnemySprite(
+        enemyId: enemyId,
         position: Vector2(360 + xOffset, y),
         size: Vector2(w, h),
+        groundY: isFlying ? null : groundTop,
+        hitboxScale: Vector2(0.75, 0.75),
+        hitboxOffset: Vector2.zero(),
+        anchor: isFlying ? Anchor.bottomLeft : Anchor.bottomLeft,
       );
+      o.priority = 5;
       add(o);
       _obstacles.add(o);
     }
@@ -475,8 +490,8 @@ class DinoRun extends FlameGame with TapCallbacks {
     final double minGapSec = minGapPx / speed;
 
     // Double dozvoljen samo za low prepreku i nikad sa flying
-    final bool allowDouble = !isFlying && h <= 22;
-    final bool doDouble = allowDouble && (_rng.nextDouble() < _doubleChance());
+    final bool allowDouble = false;
+    final bool doDouble = false;
 
     if (!doDouble) {
       // Single spawn
@@ -587,6 +602,7 @@ class DinoRun extends FlameGame with TapCallbacks {
 
     // Bez shield-a skidaj zivot
     lives -= 1;
+    player.playHurt();
 
     _hitStopLeft = 0.06;
 
@@ -604,6 +620,7 @@ class DinoRun extends FlameGame with TapCallbacks {
       dead = true;
 
       _startShake(intensity: 3.8, duration: 0.22);
+      player.playDead();
 
       _submitScoreOnce();
       overlays.add('GameOver');
@@ -674,7 +691,7 @@ class DinoRun extends FlameGame with TapCallbacks {
     _trySpawnPowerUp();
 
     // 10) Pomeri prepreke ulevo (scaled)
-    for (final o in List<Obstacle>.from(_obstacles)) {
+    for (final o in List<EnemySprite>.from(_obstacles)) {
       o.position.x -= speed * gdt;
 
       // cleanup kad izadje levo
@@ -697,11 +714,11 @@ class DinoRun extends FlameGame with TapCallbacks {
     }
 
     // 12) Collision (prepreke + near miss bonus)
-    final playerRect = player.toRect();
+    final playerRect = player.bodyRect;
 
-    for (final o in List<Obstacle>.from(_obstacles)) {
+    for (final o in List<EnemySprite>.from(_obstacles)) {
       // sudar-  take hit
-      if (playerRect.overlaps(o.toRect())) {
+      if (playerRect.overlaps(o.bodyRect)) {
         _takeHit();
         break;
       }
@@ -756,6 +773,7 @@ class DinoRun extends FlameGame with TapCallbacks {
       vy = jumpVelocity;
       onGround = false;
       _jumpBuffer = 0;
+      player.playJump();
 
       // start hold window
       _holdTime = 0;
@@ -854,6 +872,23 @@ class DinoRun extends FlameGame with TapCallbacks {
     )..layout();
 
     debug.paint(canvas, const Offset(6, 6));
+
+    // Debug hitbox (ukljuci po potrebi)
+    if (_debugHitboxes) {
+      final p = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1
+        ..color = const Color(0xFF00FF88);
+      canvas.drawRect(player.bodyRect, p);
+
+      final e = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1
+        ..color = const Color(0xFFFF4444);
+      for (final o in _obstacles) {
+        canvas.drawRect(o.bodyRect, e);
+      }
+    }
   }
 
   void restartRun() {
@@ -872,6 +907,7 @@ class DinoRun extends FlameGame with TapCallbacks {
 
   final GameLayout _layout = GameLayout(groundH: 30);
   Vector2 _screen = Vector2.zero();
+  final bool _debugHitboxes = false;
 
   @override
   void onGameResize(Vector2 size) {
