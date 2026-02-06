@@ -140,6 +140,18 @@ class EnemySprite extends SpriteAnimationGroupComponent<EnemyAnim> {
           frameSize: Vector2(24, 24),
           idleFrames: 3,
         );
+      case 'crack':
+        return _EnemySpec(
+          idlePath: 'enemies/crack.png',
+          frameSize: Vector2(24, 24),
+          idleFrames: 4,
+        );
+      case 'crackK':
+        return _EnemySpec(
+          idlePath: 'enemies/crackK.png',
+          frameSize: Vector2(24, 24),
+          idleFrames: 4,
+        );
       default:
         throw ArgumentError('Unknown enemyId: $id');
     }

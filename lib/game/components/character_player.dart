@@ -152,12 +152,9 @@ class CharacterPlayer extends SpriteAnimationGroupComponent<PlayerAnim> {
     current = PlayerAnim.move;
   }
 
-  // Jump ima prioritet nad move; pokrece se iznova.
+  // Jump animacija je iskljucena (igrac ostaje u move animaciji).
   void playJump() {
-    if (_isDead) return;
-    _isJumping = true;
-    current = PlayerAnim.jump;
-    animationTicker?.reset();
+    return;
   }
 
   // Hurt se ignorise ako je dead ili trenutno jump.

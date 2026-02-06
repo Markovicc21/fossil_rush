@@ -1,48 +1,34 @@
+import 'dart:math';
+
 import 'package:flame/camera.dart';
+import 'package:flame/components.dart';
 import 'package:flame/events.dart';
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
-import 'package:flame/components.dart';
+
 import '../services/auth/auth_service.dart';
 import '../services/score/score_service.dart';
 import '../services/shop/shop_service.dart';
-import 'dart:math';
-import 'layout/game_layout.dart';
 import 'components/character_player.dart';
 import 'components/enemy_sprite.dart';
+import 'components/ground_tile.dart';
+import 'layout/game_layout.dart';
 
-// ===================== POWER UPS =========================
+// ===================== POWER-UPS =========================
 // Tipovi power-upova koje može pokupiti tokom run-a
 enum PowerUpType { shield, slowMo, doubleScore }
 
-// PowerUp je za sada samo obojena kockica (RectangleComponent).
-
-class PowerUp extends RectangleComponent {
+// Power-up je sprite komponenta.
+class PowerUp extends SpriteComponent {
   // Koji je tip power-upa
   final PowerUpType type;
 
   PowerUp({
     required this.type,
+    required Sprite sprite,
     required Vector2 position,
     required Vector2 size,
-  }) : super(
-         position: position,
-         size: size,
-         // boja zavisi od tipa, da se vizuelno razlikuju
-         paint: Paint()..color = _colorFor(type),
-       );
-
-  // Helper: boja po tipu
-  static Color _colorFor(PowerUpType t) {
-    switch (t) {
-      case PowerUpType.shield:
-        return const Color(0xFF3AA0FF); // plava
-      case PowerUpType.slowMo:
-        return const Color(0xFFFFD24A); // zuta
-      case PowerUpType.doubleScore:
-        return const Color(0xFFFF4AF2); // roze
-    }
-  }
+  }) : super(sprite: sprite, position: position, size: size);
 }
 
 class DinoRun extends FlameGame with TapCallbacks {
@@ -52,8 +38,12 @@ class DinoRun extends FlameGame with TapCallbacks {
   late final SpriteComponent background;
   late final SpriteComponent background2;
 
-  // ground na kojoj igrac stoji
-  late final RectangleComponent ground;
+  // ground na kojoj igrac stoji (tiled + scroll)
+  late final GroundTile ground;
+  final double _groundEdgePad = 2;
+  final double _groundHeight = 100;
+  final double _groundSurfaceOffset = 10;
+  final double _flyingYOffset = 24;
 
   // player je animirani sprite (CharacterPlayer)
   late final CharacterPlayer player;
@@ -113,6 +103,12 @@ class DinoRun extends FlameGame with TapCallbacks {
   // ===================== POWER UP STATE =======================
   // Lista power-up kockica na ekranu (u svetu)
   final List<PowerUp> _powerUps = [];
+
+  // Power-up sprite-ovi
+  late final Sprite _powerShieldSprite;
+  late final Sprite _powerSlowSprite;
+  late final Sprite _powerDoubleSprite;
+  final double _powerUpSize = 22;
 
   // Cooldown da power-up ne spawnuje previse cesto
   double _powerSpawnCooldown = 0;
@@ -186,7 +182,7 @@ class DinoRun extends FlameGame with TapCallbacks {
   // VAZNO:
   // Ne koristimo vise hardcoded "150" za ground level!
   // Uvek uzimamo realni top ground-a (ground.position.y), jer layout skalira ekran.
-  double get _groundTopY => ground.position.y;
+  double get _groundTopY => ground.position.y + _groundSurfaceOffset;
 
   // ===================== BACKGROUND SCROLL =====================
   // Brzina scroll-a pozadine (manja od speed da dobije parallax osećaj)
@@ -276,19 +272,55 @@ class DinoRun extends FlameGame with TapCallbacks {
     add(background);
     add(background2);
 
-    // GROUND (platforma)
-    ground = RectangleComponent(
-      position: Vector2(0, 150),
-      size: Vector2(360, 30),
-      paint: Paint()..color = const Color(0xFF2B2B2B),
+    // GROUND (tile + scroll, da ide od kraja do kraja bez rastezanja)
+    final groundImage = await images.load('ground.png');
+    // Fiksni "tile" iz sredine slike (bez prozirnih ivica).
+    const double tileSrcW = 256;
+    const double tileSrcH = 284;
+    const double tileSrcX = 191;
+    const double tileSrcY = 371;
+    final double srcW = min(tileSrcW, groundImage.width.toDouble());
+    final double srcH = min(tileSrcH, groundImage.height.toDouble());
+    final double maxSrcX = max(0.0, groundImage.width.toDouble() - srcW);
+    final double maxSrcY = max(0.0, groundImage.height.toDouble() - srcH);
+    final double srcX = min(tileSrcX, maxSrcX);
+    final double srcY = min(tileSrcY, maxSrcY);
+    final double tileW = (srcW * (_groundHeight / srcH)).roundToDouble();
+    final groundSprite = Sprite(
+      groundImage,
+      srcPosition: Vector2(srcX, srcY),
+      srcSize: Vector2(srcW, srcH),
+    );
+    groundSprite.paint.filterQuality = FilterQuality.none;
+    groundSprite.paint.isAntiAlias = false;
+    ground = GroundTile(
+      sprite: groundSprite,
+      tileSize: Vector2(tileW, _groundHeight),
+      position: Vector2(-_groundEdgePad, 150),
+      size: Vector2(360 + _groundEdgePad * 2, _groundHeight),
     );
     add(ground);
+
+    // POWER-UP sprites
+    _powerShieldSprite = await loadSprite('Sheid.png');
+    _powerSlowSprite = await loadSprite('Pixel Clock.png');
+    _powerDoubleSprite = await loadSprite('2x.png');
+    for (final s in [
+      _powerShieldSprite,
+      _powerSlowSprite,
+      _powerDoubleSprite,
+    ]) {
+      s.paint.filterQuality = FilterQuality.none;
+      s.paint.isAntiAlias = false;
+    }
 
     // Enemy sprite sheet preload (da ne stuca pri prvom spawnu)
     await EnemySprite.preloadImages('doux');
     await EnemySprite.preloadImages('kira');
     await EnemySprite.preloadImages('olaf');
     await EnemySprite.preloadImages('vita');
+    await EnemySprite.preloadImages('crack');
+    await EnemySprite.preloadImages('crackK');
 
     // PLAYER (aktivni dino iz shop-a, default = tard)
     String activeId = 'tard';
@@ -391,31 +423,6 @@ class DinoRun extends FlameGame with TapCallbacks {
   // Mid: low+high
   // Late: ubaci retko flying i malo cesci double low
 
-  double _lowWeight() {
-    if (score < 15) return 1.00;
-    if (score < 40) return 0.70;
-    return 0.60;
-  }
-
-  double _highWeight() {
-    if (score < 15) return 0.00;
-    if (score < 40) return 0.30;
-    return 0.33;
-  }
-
-  // flying je ultra retko i tek posle 40
-  double _flyingWeight() {
-    if (score < 40) return 0.00;
-    return 0.07;
-  }
-
-  // double obstacle (samo low+low) sansa
-  double _doubleChance() {
-    if (score < 15) return 0.00;
-    if (score < 40) return 0.06;
-    return 0.10;
-  }
-
   // sansa da preskoci spawn da ubaci prazninu
   double _skipChance() {
     if (score < 15) return 0.18;
@@ -447,7 +454,7 @@ class DinoRun extends FlameGame with TapCallbacks {
     }
 
     // Dva ground enemy + dva flying enemy
-    const groundIds = ['doux', 'olaf'];
+    const groundIds = ['doux', 'olaf', 'crack', 'crackK'];
     const flyingIds = ['kira', 'vita'];
     final bool isFlying = _rng.nextBool();
     final String enemyId = isFlying
@@ -466,7 +473,7 @@ class DinoRun extends FlameGame with TapCallbacks {
     final double h = baseH * scale;
 
     // Ground enemy: Y resava EnemySprite preko groundY
-    final double y = isFlying ? (groundTop - h - 18) : 0;
+    final double y = isFlying ? (groundTop - h - _flyingYOffset) : 0;
 
     // helper za spawn jednog neprijatelja
     void spawnOne(double xOffset) {
@@ -488,9 +495,6 @@ class DinoRun extends FlameGame with TapCallbacks {
     // raste sa speed i faktorom faze (early vece)
     final double minGapPx = max(95.0, speed * _gapFactor());
     final double minGapSec = minGapPx / speed;
-
-    // Double dozvoljen samo za low prepreku i nikad sa flying
-    final bool allowDouble = false;
     final bool doDouble = false;
 
     if (!doDouble) {
@@ -501,14 +505,6 @@ class DinoRun extends FlameGame with TapCallbacks {
       _nextSpawnIn = minGapSec * (0.75 + _rng.nextDouble() * 0.35);
       return;
     }
-
-    // Double spawn: dve low prepreke sa razmakom koji skaluje sa speed
-    final double secondOffset = minGapPx * 0.78;
-    spawnOne(0);
-    spawnOne(secondOffset);
-
-    // posle double-a obavezno duza pauza
-    _nextSpawnIn = minGapSec * 1.40;
   }
 
   // ===================== POWER UP SPAWN =======================
@@ -541,14 +537,21 @@ class DinoRun extends FlameGame with TapCallbacks {
     }
 
     // pozicija iznad zemlje (pokupivo i tokom trcanja / skoka)
-    const w = 12.0;
-    const h = 12.0;
+    final double w = _powerUpSize;
+    final double h = _powerUpSize;
 
     // VAZNO: isto vezano za ground top
     final y = _groundTopY - 30 - h;
 
+    final Sprite sprite = switch (type) {
+      PowerUpType.shield => _powerShieldSprite,
+      PowerUpType.slowMo => _powerSlowSprite,
+      PowerUpType.doubleScore => _powerDoubleSprite,
+    };
+
     final p = PowerUp(
       type: type,
+      sprite: sprite,
       position: Vector2(360, y),
       size: Vector2(w, h),
     );
@@ -668,6 +671,12 @@ class DinoRun extends FlameGame with TapCallbacks {
     // Pomeri oba background sprite-a ulevo, pa wrap kad izadju
     background.position.x -= _bgSpeed * gdt;
     background2.position.x -= _bgSpeed * gdt;
+
+    // GROUND scroll (tile offset)
+    final tileW = ground.tileSize.x;
+    if (tileW > 0) {
+      ground.scrollX = (ground.scrollX + speed * gdt) % tileW;
+    }
 
     // wrap logika: kad jedan potpuno izadje levo, prebaci ga desno od drugog
     final w = background.size.x;
@@ -791,7 +800,7 @@ class DinoRun extends FlameGame with TapCallbacks {
     player.position.y += vy * dt;
 
     // clamp na ground
-    final double floorY = ground.position.y - player.size.y;
+    final double floorY = _groundTopY - player.size.y;
     if (player.position.y >= floorY) {
       player.position.y = floorY;
       vy = 0;
@@ -906,13 +915,12 @@ class DinoRun extends FlameGame with TapCallbacks {
   }
 
   final GameLayout _layout = GameLayout(groundH: 30);
-  Vector2 _screen = Vector2.zero();
+
   final bool _debugHitboxes = false;
 
   @override
   void onGameResize(Vector2 size) {
     super.onGameResize(size);
-    _screen = size;
 
     // VAZNO:
     // onGameResize moze doci pre onLoad -> ne diraj late polja dok svet nije spreman
@@ -926,6 +934,15 @@ class DinoRun extends FlameGame with TapCallbacks {
       playerSize: player.size,
       onGround: onGround,
     );
+
+    // Podesi ground da popuni dno ekrana (uz mali edge pad)
+    ground.size = Vector2(size.x + _groundEdgePad * 2, _groundHeight);
+    ground.position = Vector2(-_groundEdgePad, size.y - _groundHeight);
+
+    // Ako je na zemlji, ponovo poravnaj igraca na REAL ground surface
+    if (onGround) {
+      player.position.y = _groundTopY - player.size.y;
+    }
 
     // VAZNO:
     // Drugi background mora da ostane zalepljen desno od prvog i posle resize-a
