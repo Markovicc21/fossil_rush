@@ -415,6 +415,7 @@ class DinoRun extends FlameGame with TapCallbacks {
     // reset camera shake
     _shakeLeft = 0;
     camera.viewfinder.position.setFrom(_cameraBase);
+
   }
 
   // ===================== DIFFICULTY DIRECTOR ==================
@@ -871,16 +872,18 @@ class DinoRun extends FlameGame with TapCallbacks {
   void render(Canvas canvas) {
     super.render(canvas);
 
-    final debug = TextPainter(
-      text: TextSpan(
-        text:
-            'SCORE:$score  LIVES:$lives  SH:${shieldActive ? "Y" : "N"}  SLOW:${slowMoLeft > 0 ? "Y" : "N"}  X2:${doubleScoreLeft > 0 ? "Y" : "N"}',
-        style: const TextStyle(fontSize: 10, color: Colors.white),
-      ),
-      textDirection: TextDirection.ltr,
-    )..layout();
+    if (_debugHud) {
+      final debug = TextPainter(
+        text: TextSpan(
+          text:
+              'SCORE:$score  LIVES:$lives  SH:${shieldActive ? "Y" : "N"}  SLOW:${slowMoLeft > 0 ? "Y" : "N"}  X2:${doubleScoreLeft > 0 ? "Y" : "N"}',
+          style: const TextStyle(fontSize: 10, color: Colors.white),
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout();
 
-    debug.paint(canvas, const Offset(6, 6));
+      debug.paint(canvas, const Offset(6, 6));
+    }
 
     // Debug hitbox (ukljuci po potrebi)
     if (_debugHitboxes) {
@@ -915,7 +918,7 @@ class DinoRun extends FlameGame with TapCallbacks {
   }
 
   final GameLayout _layout = GameLayout(groundH: 30);
-
+  final bool _debugHud = false;
   final bool _debugHitboxes = false;
 
   @override
