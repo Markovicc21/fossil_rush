@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../services/auth/auth_service.dart';
 import '../services/score/score_service.dart';
-import '../models/score_state.dart';
 import '../widgets/retro_panel.dart';
 
 class RankEntry {
@@ -21,7 +19,6 @@ class ScoreboardScreen extends StatefulWidget {
 }
 
 class _ScoreboardScreenState extends State<ScoreboardScreen> {
-  String? _username;
   bool _loading = true;
   List<RankEntry> _entries = const [];
 
@@ -33,9 +30,6 @@ class _ScoreboardScreenState extends State<ScoreboardScreen> {
 
   Future<void> _boot() async {
     try {
-      final session = await AuthService.repo.session();
-      _username = session?.username;
-
       await _loadRankings();
     } catch (_) {
       _entries = const [];
@@ -47,35 +41,11 @@ class _ScoreboardScreenState extends State<ScoreboardScreen> {
   }
 
   Future<void> _loadRankings() async {
-    final usernames = await _tryGetAllUsernames();
-    final List<RankEntry> result = [];
-
-    for (final name in usernames) {
-      final ScoreState s = await ScoreService.get(name);
-      if (s.gamesPlayed <= 0) continue;
-
-      result.add(RankEntry(username: name, bestScore: s.bestScore));
-    }
-
-    result.sort((a, b) => b.bestScore.compareTo(a.bestScore));
-    _entries = result;
-  }
-
-  Future<List<String>> _tryGetAllUsernames() async {
-    final dynamic repo = AuthService.repo;
-
-    try {
-      final list = await repo.listUsernames();
-      if (list is List<String>) return list;
-    } catch (_) {}
-
-    try {
-      final list = await repo.getAllUsernames();
-      if (list is List<String>) return list;
-    } catch (_) {}
-
-    if (_username != null && _username!.isNotEmpty) return [_username!];
-    return const [];
+    final top = await ScoreService.top(limit: 50);
+    _entries = top
+        .where((e) => e.gamesPlayed > 0)
+        .map((e) => RankEntry(username: e.username, bestScore: e.bestScore))
+        .toList();
   }
 
   Widget _pixelBackButton() {

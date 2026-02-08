@@ -9,9 +9,9 @@ class LocalScoreRepository implements ScoreRepository {
   String _key(String username) => '$_prefix$username';
 
   @override
-  Future<ScoreState> getScore(String username) async {
+  Future<ScoreState> getScore(String userId) async {
     final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(_key(username));
+    final raw = prefs.getString(_key(userId));
 
     if (raw == null) {
       return ScoreState.empty;
@@ -21,9 +21,13 @@ class LocalScoreRepository implements ScoreRepository {
   }
 
   @override
-  Future<ScoreState> submitScore(String username, int score) async {
+  Future<ScoreState> submitScore(
+    String userId,
+    int score, {
+    String? username,
+  }) async {
     final prefs = await SharedPreferences.getInstance();
-    final current = await getScore(username);
+    final current = await getScore(userId);
 
     final updated = current.copyWith(
       lastScore: score,
@@ -31,13 +35,18 @@ class LocalScoreRepository implements ScoreRepository {
       bestScore: score > current.bestScore ? score : current.bestScore,
     );
 
-    await prefs.setString(_key(username), jsonEncode(updated.toJson()));
+    await prefs.setString(_key(userId), jsonEncode(updated.toJson()));
     return updated;
   }
 
   @override
-  Future<void> reset(String username) async {
+  Future<void> reset(String userId) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_key(username));
+    await prefs.remove(_key(userId));
+  }
+
+  @override
+  Future<List<ScoreEntry>> getTop({int limit = 50}) async {
+    return const [];
   }
 }

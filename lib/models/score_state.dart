@@ -33,3 +33,19 @@ class ScoreState {
 
   static const empty = ScoreState(bestScore: 0, lastScore: 0, gamesPlayed: 0);
 }
+
+class ScoreEntry {
+  final String userId;
+  final String username;
+  final int bestScore;
+  final int lastScore;
+  final int gamesPlayed;
+
+  const ScoreEntry({
+    required this.userId,
+    required this.username,
+    required this.bestScore,
+    required this.lastScore,
+    required this.gamesPlayed,
+  });
+}

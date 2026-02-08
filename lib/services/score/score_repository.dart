@@ -1,7 +1,12 @@
 import '../../models/score_state.dart';
 
 abstract class ScoreRepository {
-  Future<ScoreState> getScore(String username);
-  Future<ScoreState> submitScore(String username, int score);
-  Future<void> reset(String username);
+  Future<ScoreState> getScore(String userId);
+  Future<ScoreState> submitScore(
+    String userId,
+    int score, {
+    String? username,
+  });
+  Future<void> reset(String userId);
+  Future<List<ScoreEntry>> getTop({int limit = 50});
 }

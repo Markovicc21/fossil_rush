@@ -231,14 +231,15 @@ class DinoRun extends FlameGame with TapCallbacks {
     if (_submitted) return;
     _submitted = true;
 
-    // uzmi session -> username
+    // uzmi session -> userId + username
     final session = await AuthService.repo.session();
+    final userId = session?.userId;
     final username = session?.username;
 
     // ako nema user-a, preskoci submit
-    if (username == null || username.isEmpty) return;
+    if (userId == null || userId.isEmpty) return;
 
-    await ScoreService.submit(username, score);
+    await ScoreService.submit(userId, score, username: username);
   }
 
   // ===================== GAME LOAD ============================
