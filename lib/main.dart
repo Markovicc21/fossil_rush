@@ -1,15 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:fossil_rush/screens/admin_screen.dart';
 import 'package:fossil_rush/screens/main_menu_screen.dart';
 import 'package:fossil_rush/screens/profile_screen.dart';
 import 'package:fossil_rush/screens/register_screen.dart';
 import 'package:fossil_rush/screens/scoreboard_screen.dart';
 import 'package:fossil_rush/screens/shop_screen.dart';
+import 'firebase_options.dart';
 import 'screens/splash_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/game_screen.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
   runApp(const MyApp());
 }
 
