@@ -227,7 +227,10 @@ class _ShopScreenState extends State<ShopScreen> {
           ),
         ),
 
-        const SizedBox(width: 52),
+        const SizedBox(width: 10),
+
+        // BUY COINS dugme (UI only)
+        _buyCoinsButton(),
       ],
     );
   }
@@ -449,6 +452,170 @@ class _ShopScreenState extends State<ShopScreen> {
               fontSize: 12,
               color: Color(0xFFFFE7C2),
               height: 1.0,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ======================== BUY COINS BUTTON ========================
+  Widget _buyCoinsButton() {
+    return SizedBox(
+      height: 30,
+      child: OutlinedButton.icon(
+        onPressed: _showBuyCoinsDialog,
+        icon: const Icon(Icons.add, size: 14),
+        label: const Text('BUY COINS'),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: const Color(0xFFF5F5F5),
+          side: const BorderSide(color: Color(0xFFF5F5F5), width: 1),
+          backgroundColor: Colors.black.withOpacity(0.25),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          textStyle: const TextStyle(fontSize: 10, height: 1.0),
+          minimumSize: const Size(0, 30),
+        ),
+      ),
+    );
+  }
+
+  // ======================== BUY COINS DIALOG (UI ONLY) ========================
+  Future<void> _showBuyCoinsDialog() async {
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      builder: (dialogContext) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+          title: const Text('Buy coins'),
+          content: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 340),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _coinPackTile(label: '500 coins', price: '\$0.99'),
+                const SizedBox(height: 8),
+                _coinPackTile(label: '1200 coins', price: '\$1.99'),
+                const SizedBox(height: 8),
+                _coinPackTile(label: '3000 coins', price: '\$3.99'),
+                const SizedBox(height: 14),
+                const Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Pay with',
+                    style: TextStyle(fontSize: 12, color: Colors.black54),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _payMethodButton(
+                        icon: Icons.credit_card,
+                        title: 'Card',
+                        subtitle: 'VISA • MasterCard',
+                        onPressed: () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Card: coming soon')),
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _payMethodButton(
+                        icon: Icons.account_balance_wallet,
+                        title: 'Google Pay',
+                        subtitle: 'GPay',
+                        onPressed: () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Google Pay: coming soon'),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Close'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _coinPackTile({required String label, required String price}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF7F7F7),
+        border: Border.all(color: const Color(0xFFE0E0E0)),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: [
+          Text(label, style: const TextStyle(fontSize: 13)),
+          const Spacer(),
+          Text(
+            price,
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _payMethodButton({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onPressed,
+  }) {
+    return OutlinedButton(
+      onPressed: onPressed,
+      style: OutlinedButton.styleFrom(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+        side: const BorderSide(color: Color(0xFFE0E0E0)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: Colors.black87),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                Text(
+                  subtitle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 10, color: Colors.black54),
+                ),
+              ],
             ),
           ),
         ],

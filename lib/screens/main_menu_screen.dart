@@ -6,7 +6,9 @@ import 'shop_screen.dart';
 import 'profile_screen.dart';
 import 'scoreboard_screen.dart';
 import 'login_screen.dart';
+import '../widgets/pixelInput.dart';
 import '../widgets/image_button.dart';
+import '../widgets/retro_panel.dart';
 
 class MainMenuScreen extends StatelessWidget {
   const MainMenuScreen({super.key, required this.isLoggedin});
@@ -129,7 +131,7 @@ class MainMenuScreen extends StatelessWidget {
               children: [
                 GestureDetector(
                   onLongPress: () {
-                    Navigator.pushNamed(context, AdminScreen.routeName);
+                    _showAdminLogin(context);
                   },
                   child: Image.asset(
                     'assets/images/logo.png',
@@ -168,6 +170,149 @@ class MainMenuScreen extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+
+  Future<void> _showAdminLogin(BuildContext context) async {
+    final userController = TextEditingController();
+    final passController = TextEditingController();
+    String? errorText;
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      barrierColor: Colors.black.withOpacity(0.55),
+      builder: (dialogContext) {
+        final size = MediaQuery.of(dialogContext).size;
+        return Center(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxWidth: 320,
+              maxHeight: size.height * 0.6,
+            ),
+            child: Material(
+              color: Colors.transparent,
+              child: StatefulBuilder(
+                builder: (context, setState) {
+                  return RetroPanel(
+                    fill: const Color(0xFFF1E9F1),
+                    padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        const Text(
+                          'ADMIN LOGIN',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 24,
+                            color: Color(0xFF2A1A12),
+                            height: 1.0,
+                            shadows: [
+                              Shadow(
+                                offset: Offset(2, 2),
+                                color: Color(0xFFB8A7B8),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Container(
+                          height: 2,
+                          color: const Color(0xFF2A1A12).withOpacity(0.35),
+                        ),
+                        const SizedBox(height: 12),
+
+                        pixelInput(
+                          hint: 'Username',
+                          controller: userController,
+                        ),
+                        const SizedBox(height: 10),
+                        pixelInput(
+                          hint: 'Password',
+                          obscure: true,
+                          controller: passController,
+                        ),
+
+                        if (errorText != null) ...[
+                          const SizedBox(height: 10),
+                          Text(
+                            errorText!,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Colors.red,
+                              height: 1.0,
+                            ),
+                          ),
+                        ],
+
+                        const SizedBox(height: 12),
+                        Container(
+                          height: 2,
+                          color: const Color(0xFF2A1A12).withOpacity(0.20),
+                        ),
+                        const SizedBox(height: 10),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            _retroActionButton(
+                              text: 'Cancel',
+                              onPressed: () =>
+                                  Navigator.of(dialogContext).pop(),
+                            ),
+                            _retroActionButton(
+                              text: 'OK',
+                              onPressed: () {
+                                final user = userController.text.trim();
+                                final pass = passController.text;
+                                if (user == 'admin' && pass == 'admin') {
+                                  Navigator.of(dialogContext).pop();
+                                  Navigator.pushNamed(
+                                    context,
+                                    AdminScreen.routeName,
+                                  );
+                                } else {
+                                  setState(() {
+                                    errorText = 'Pogresan admin login';
+                                  });
+                                }
+                              },
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+        );
+      },
+    );
+    userController.dispose();
+    passController.dispose();
+  }
+
+  Widget _retroActionButton({
+    required String text,
+    required VoidCallback onPressed,
+  }) {
+    return GestureDetector(
+      onTap: onPressed,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+        child: Text(
+          text.toUpperCase(),
+          style: const TextStyle(
+            fontSize: 14,
+            color: Color(0xFF6A58B6),
+            height: 1.0,
+            shadows: [Shadow(offset: Offset(1, 1), color: Color(0xFFB8A7B8))],
+          ),
+        ),
+      ),
     );
   }
 

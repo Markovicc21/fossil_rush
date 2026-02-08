@@ -4,7 +4,7 @@ import 'shop_repository.dart';
 
 class LocalShopRepository implements ShopRepository {
   // defaulti kad user prvi put uđe u shop
-  static const int _defaultCoins = 1000;
+  static const int _defaultCoins = 0;
   static const String _defaultOwned = 'tard'; // prvi free dino
   static const String _defaultActive = 'tard';
 
