@@ -324,14 +324,14 @@ class DinoRun extends FlameGame with TapCallbacks {
 
     // PLAYER (aktivni dino iz shop-a, default = tard)
     String activeId = 'tard';
-    final session = await AuthService.repo.session();
-    final username = session?.username;
-    if (username != null && username.isNotEmpty) {
-      try {
-        final state = await ShopService.repo.load(username);
-        activeId = state.activeId;
-      } catch (_) {
-        activeId = 'tard';
+      final session = await AuthService.repo.session();
+      final userId = session?.userId;
+      if (userId != null && userId.isNotEmpty) {
+        try {
+          final state = await ShopService.repo.load(userId);
+          activeId = state.activeId;
+        } catch (_) {
+          activeId = 'tard';
       }
     }
 

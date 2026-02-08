@@ -39,8 +39,8 @@ class LocalShopRepository implements ShopRepository {
   }
 
   @override
-  Future<ShopState> load(String username) async {
-    final u = username.trim();
+  Future<ShopState> load(String userId) async {
+    final u = userId.trim();
     final sp = await SharedPreferences.getInstance();
 
     if (!sp.containsKey(_kCoins(u)) ||
@@ -69,11 +69,11 @@ class LocalShopRepository implements ShopRepository {
 
   @override
   Future<ShopState> buy(
-    String username, {
+    String userId, {
     required String itemId,
     required int price,
   }) async {
-    final u = username.trim();
+    final u = userId.trim();
     final s = await load(u);
 
     if (s.owned.contains(itemId)) {
@@ -96,8 +96,8 @@ class LocalShopRepository implements ShopRepository {
   }
 
   @override
-  Future<ShopState> equip(String username, {required String itemId}) async {
-    final u = username.trim();
+  Future<ShopState> equip(String userId, {required String itemId}) async {
+    final u = userId.trim();
     final s = await load(u);
 
     if (!s.owned.contains(itemId)) return s; // ne može equip ako nije owned

@@ -9,10 +9,17 @@ class AuthResult {
 }
 
 class AuthSession {
+  final String userId;
   final String username;
+  final String? email;
   final String? token; //kasnije JWt / accsess token
 
-  const AuthSession({required this.username, this.token});
+  const AuthSession({
+    required this.userId,
+    required this.username,
+    this.email,
+    this.token,
+  });
 }
 
 abstract class AuthRepository {

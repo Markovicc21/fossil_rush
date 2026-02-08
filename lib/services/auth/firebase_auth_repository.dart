@@ -106,8 +106,12 @@ class FirebaseAuthRepository implements AuthRepository {
   Future<AuthSession?> session() async {
     final user = _auth.currentUser;
     if (user == null) return null;
-    final token = await user.getIdToken();
-    return AuthSession(username: _fromUser(user), token: token);
+    return AuthSession(
+      userId: user.uid,
+      username: _fromUser(user),
+      email: user.email,
+      token: null,
+    );
   }
 
   @override

@@ -1,13 +1,13 @@
 import 'shop_models.dart';
 
 abstract class ShopRepository {
-  Future<ShopState> load(String username);
+  Future<ShopState> load(String userId);
 
   Future<ShopState> buy(
-    String username, {
+    String userId, {
     required String itemId,
     required int price,
   });
 
-  Future<ShopState> equip(String username, {required String itemId});
+  Future<ShopState> equip(String userId, {required String itemId});
 }

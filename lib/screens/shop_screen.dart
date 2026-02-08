@@ -10,18 +10,18 @@ import 'package:fossil_rush/widgets/retro_panel.dart';
 // toast poruke
 
 // NOVO:
-// - state se učitava i pamti po nalogu (SharedPreferences)
-// - username uzimamo iz AuthService.repo.session()
-// - buy/equip ide kroz ShopService.repo (LocalShopRepository)
-// - katalog (lista dinosa) ide kroz ShopService.catalogRepo (LocalShopCatalogRepository)
+// - state se učitava i pamti po nalogu (Firestore)
+// - userId se prosledjuje pri otvaranju ShopScreen
+// - buy/equip ide kroz ShopService.repo (FirebaseShopRepository)
+// - katalog (lista dinosa) ide kroz ShopService.catalogRepo (FirebaseShopCatalogRepository)
 
-import 'package:fossil_rush/services/auth/auth_service.dart';
 import 'package:fossil_rush/services/shop/shop_service.dart';
 import 'package:fossil_rush/services/shop/shop_models.dart';
 
 class ShopScreen extends StatefulWidget {
-  const ShopScreen({super.key});
+  const ShopScreen({super.key, this.userId});
   static const routeName = '/shop';
+  final String? userId;
 
   @override
   State<ShopScreen> createState() => _ShopScreenState();
@@ -29,11 +29,12 @@ class ShopScreen extends StatefulWidget {
 
 class _ShopScreenState extends State<ShopScreen> {
   // --------- USER / LOADING STATE ----------
-  // username iz session-a (po njemu se čuva shop state)
-  String? _username;
+  // userId prosledjen pri otvaranju ekrana
+  String? _userId;
 
-  // dok učitavamo shop state iz SharedPreferences
+  // dok učitavamo shop state iz Firestore
   bool _loading = true;
+  String? _loadError;
 
   // --------- GAME STATE (SADA NIJE HARDCODED) ----------
   // Trenutni broj coin-a (učitan po nalogu)
@@ -70,38 +71,49 @@ class _ShopScreenState extends State<ShopScreen> {
 
   // ---------------- INIT (load state po nalogu) ----------------
   Future<void> _initShopForUser() async {
-    setState(() => _loading = true);
+    setState(() {
+      _loading = true;
+      _loadError = null;
+    });
 
-    // uzmi ulogovanog user-a iz AuthService
-    final session = await AuthService.repo.session();
-    if (!mounted) return;
-
-    // ako nema session-a -> user nije ulogovan -> vrati nazad
-    if (session == null) {
-      setState(() => _loading = false);
-      Navigator.of(context).pop();
+    final u = widget.userId?.trim();
+    if (u == null || u.isEmpty) {
+      setState(() {
+        _loading = false;
+        _loadError = 'Missing user id';
+      });
       return;
     }
 
-    final u = session.username.trim();
+    try {
+      final shopFuture = ShopService.repo.load(u);
+      final catalogFuture = ShopService.catalogRepo.loadCatalog();
 
-    // učitaj shop state iz ShopService.repo (LocalShopRepository)
-    final ShopState s = await ShopService.repo.load(u);
-    if (!mounted) return;
+      final results = await Future.wait([
+        shopFuture.timeout(const Duration(seconds: 8)),
+        catalogFuture.timeout(const Duration(seconds: 8)),
+      ]);
 
-    // NOVO: učitaj katalog (lista itema) iz ShopService.catalogRepo
-    final catalog = await ShopService.catalogRepo.loadCatalog();
-    if (!mounted) return;
+      final ShopState s = results[0] as ShopState;
+      final catalog = results[1] as List<ShopItem>;
+      if (!mounted) return;
 
-    // upiši u UI state
-    setState(() {
-      _username = u;
-      coins = s.coins;
-      owned = {...s.owned};
-      activeId = s.activeId;
-      _catalogAll = catalog;
-      _loading = false;
-    });
+      // upiši u UI state
+      setState(() {
+        _userId = u;
+        coins = s.coins;
+        owned = {...s.owned};
+        activeId = s.activeId;
+        _catalogAll = catalog;
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _loadError = e.toString();
+      });
+    }
   }
 
   // ---------------- NAVIGACIJA ----------------
@@ -128,8 +140,8 @@ class _ShopScreenState extends State<ShopScreen> {
   // Ako nije kupljen -> kupi (ako ima coins)
   // Ako je kupljen -> equip
   void _onBuyOrEquip(ShopItem item) async {
-    // NOVO: mora da postoji username (ulogovan user)
-    if (_username == null) return;
+    // NOVO: mora da postoji userId (ulogovan user)
+    if (_userId == null) return;
 
     // dok učitavamo state, blokiraj klikove
     if (_loading) return;
@@ -140,7 +152,7 @@ class _ShopScreenState extends State<ShopScreen> {
     // Ako je već aktivan -> ništa ne radi
     if (isActive) return;
 
-    final u = _username!.trim();
+    final u = _userId!.trim();
 
     // Ako nije kupljen -> pokušaj kupovinu
     if (!isOwned) {
@@ -152,7 +164,7 @@ class _ShopScreenState extends State<ShopScreen> {
         return;
       }
 
-      // NOVO: kupovina ide kroz repo -> upiše u SharedPreferences
+      // NOVO: kupovina ide kroz repo -> upiše u Firestore
       final next = await ShopService.repo.buy(
         u,
         itemId: item.id,
@@ -172,7 +184,7 @@ class _ShopScreenState extends State<ShopScreen> {
     }
 
     // Ako je kupljen -> samo ga aktiviraj
-    // NOVO: equip ide kroz repo -> upiše u SharedPreferences
+    // NOVO: equip ide kroz repo -> upiše u Firestore
     final next = await ShopService.repo.equip(u, itemId: item.id);
     if (!mounted) return;
 
@@ -461,19 +473,21 @@ class _ShopScreenState extends State<ShopScreen> {
 
   // ======================== BUY COINS BUTTON ========================
   Widget _buyCoinsButton() {
-    return SizedBox(
-      height: 30,
-      child: OutlinedButton.icon(
-        onPressed: _showBuyCoinsDialog,
-        icon: const Icon(Icons.add, size: 14),
-        label: const Text('BUY COINS'),
-        style: OutlinedButton.styleFrom(
-          foregroundColor: const Color(0xFFF5F5F5),
-          side: const BorderSide(color: Color(0xFFF5F5F5), width: 1),
-          backgroundColor: Colors.black.withOpacity(0.25),
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-          textStyle: const TextStyle(fontSize: 10, height: 1.0),
-          minimumSize: const Size(0, 30),
+    return GestureDetector(
+      onTap: _showBuyCoinsDialog,
+      child: RetroPanel(
+        fill: const Color(0xFFF2A23A),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        shadowOffset: 2,
+        child: const Text(
+          'BUY COINS',
+          maxLines: 1,
+          overflow: TextOverflow.clip,
+          style: TextStyle(
+            fontSize: 10,
+            color: Color(0xFF2A1A12),
+            height: 1.0,
+          ),
         ),
       ),
     );
@@ -485,92 +499,137 @@ class _ShopScreenState extends State<ShopScreen> {
       context: context,
       barrierDismissible: true,
       builder: (dialogContext) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
-          ),
-          title: const Text('Buy coins'),
-          content: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 340),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _coinPackTile(label: '500 coins', price: '\$0.99'),
-                const SizedBox(height: 8),
-                _coinPackTile(label: '1200 coins', price: '\$1.99'),
-                const SizedBox(height: 8),
-                _coinPackTile(label: '3000 coins', price: '\$3.99'),
-                const SizedBox(height: 14),
-                const Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    'Pay with',
-                    style: TextStyle(fontSize: 12, color: Colors.black54),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Row(
+        final size = MediaQuery.of(dialogContext).size;
+        return Center(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxWidth: 340,
+              maxHeight: size.height * 0.7,
+            ),
+            child: Material(
+              color: Colors.transparent,
+              child: RetroPanel(
+                fill: const Color(0xFFA56A43),
+                padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Expanded(
-                      child: _payMethodButton(
-                        icon: Icons.credit_card,
-                        title: 'Card',
-                        subtitle: 'VISA • MasterCard',
-                        onPressed: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Card: coming soon')),
-                          );
-                        },
+                    const Text(
+                      'BUY COINS',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 22,
+                        color: Color(0xFFFFE7C2),
+                        height: 1.0,
+                        shadows: [
+                          Shadow(
+                            offset: Offset(2, 2),
+                            color: Color(0xFF2A1A12),
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: _payMethodButton(
-                        icon: Icons.account_balance_wallet,
-                        title: 'Google Pay',
-                        subtitle: 'GPay',
-                        onPressed: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Google Pay: coming soon'),
-                            ),
-                          );
-                        },
+                    const SizedBox(height: 12),
+                    Container(
+                      height: 2,
+                      color: const Color(0xFF2A1A12).withOpacity(0.35),
+                    ),
+                    const SizedBox(height: 12),
+
+                    _coinPackRow(label: '500 COINS', price: '\$0.99'),
+                    const SizedBox(height: 8),
+                    _coinPackRow(label: '1200 COINS', price: '\$1.99'),
+                    const SizedBox(height: 8),
+                    _coinPackRow(label: '3000 COINS', price: '\$3.99'),
+
+                    const SizedBox(height: 12),
+                    Container(
+                      height: 2,
+                      color: const Color(0xFF2A1A12).withOpacity(0.20),
+                    ),
+                    const SizedBox(height: 10),
+
+                    const Text(
+                      'PAYMENT',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFFFFE7C2),
+                        height: 1.0,
                       ),
+                    ),
+                    const SizedBox(height: 8),
+
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _retroPayButton(
+                            icon: Icons.credit_card,
+                            text: 'CARD',
+                            onPressed: () {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Card: coming soon'),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: _retroPayButton(
+                            icon: Icons.account_balance_wallet,
+                            text: 'GOOGLE PAY',
+                            onPressed: () {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Google Pay: coming soon'),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 10),
+                    _retroActionButton(
+                      text: 'CLOSE',
+                      onPressed: () => Navigator.of(dialogContext).pop(),
                     ),
                   ],
                 ),
-              ],
+              ),
             ),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(),
-              child: const Text('Close'),
-            ),
-          ],
         );
       },
     );
   }
 
-  Widget _coinPackTile({required String label, required String price}) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF7F7F7),
-        border: Border.all(color: const Color(0xFFE0E0E0)),
-        borderRadius: BorderRadius.circular(8),
-      ),
+  Widget _coinPackRow({required String label, required String price}) {
+    return RetroPanel(
+      fill: const Color(0xFFD6B48A),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      shadowOffset: 2,
       child: Row(
         children: [
-          Text(label, style: const TextStyle(fontSize: 13)),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 12,
+              color: Color(0xFF2A1A12),
+              height: 1.0,
+            ),
+          ),
           const Spacer(),
           Text(
             price,
             style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
+              fontSize: 12,
+              color: Color(0xFF2A1A12),
+              height: 1.0,
             ),
           ),
         ],
@@ -578,47 +637,58 @@ class _ShopScreenState extends State<ShopScreen> {
     );
   }
 
-  Widget _payMethodButton({
+  Widget _retroPayButton({
     required IconData icon,
-    required String title,
-    required String subtitle,
+    required String text,
     required VoidCallback onPressed,
   }) {
-    return OutlinedButton(
-      onPressed: onPressed,
-      style: OutlinedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-        side: const BorderSide(color: Color(0xFFE0E0E0)),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, size: 18, color: Colors.black87),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
+    return GestureDetector(
+      onTap: onPressed,
+      child: RetroPanel(
+        fill: const Color(0xFF55B6FF),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+        shadowOffset: 2,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 14, color: const Color(0xFF2A1A12)),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                text,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 10,
+                  color: Color(0xFF2A1A12),
+                  height: 1.0,
                 ),
-                Text(
-                  subtitle,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 10, color: Colors.black54),
-                ),
-              ],
+              ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _retroActionButton({
+    required String text,
+    required VoidCallback onPressed,
+  }) {
+    return GestureDetector(
+      onTap: onPressed,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+        child: Text(
+          text,
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            fontSize: 14,
+            color: Color(0xFFFFE7C2),
+            height: 1.0,
+            shadows: [Shadow(offset: Offset(1, 1), color: Color(0xFF2A1A12))],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -665,7 +735,9 @@ class _ShopScreenState extends State<ShopScreen> {
               padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
               child: _loading
                   ? const Center(child: CircularProgressIndicator())
-                  : Column(
+                  : (_loadError != null
+                      ? _errorState()
+                      : Column(
                       children: [
                         _header(),
                         const SizedBox(height: 10),
@@ -710,7 +782,7 @@ class _ShopScreenState extends State<ShopScreen> {
 
                         _footerCoins(),
                       ],
-                    ),
+                    )),
             ),
           ),
 
@@ -727,6 +799,47 @@ class _ShopScreenState extends State<ShopScreen> {
                 ),
               ),
             ),
+        ],
+      ),
+    );
+  }
+
+  Widget _errorState() {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text(
+            'Shop failed to load',
+            style: TextStyle(
+              fontSize: 12,
+              color: Color(0xFFFFE7C2),
+              height: 1.0,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            _loadError ?? '',
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 10, color: Colors.redAccent),
+          ),
+          const SizedBox(height: 12),
+          GestureDetector(
+            onTap: _initShopForUser,
+            child: RetroPanel(
+              fill: const Color(0xFFF2A23A),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              shadowOffset: 2,
+              child: const Text(
+                'RETRY',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Color(0xFF2A1A12),
+                  height: 1.0,
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );

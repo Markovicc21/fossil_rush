@@ -6,6 +6,7 @@ import 'shop_screen.dart';
 import 'profile_screen.dart';
 import 'scoreboard_screen.dart';
 import 'login_screen.dart';
+import 'package:fossil_rush/services/auth/auth_service.dart';
 import '../widgets/pixelInput.dart';
 import '../widgets/image_button.dart';
 import '../widgets/retro_panel.dart';
@@ -94,9 +95,20 @@ class MainMenuScreen extends StatelessWidget {
                   asset: 'assets/images/SHOP.png',
                   width: 260,
                   onPressed: () {
-                    Navigator.of(
-                      context,
-                    ).push(ScreenSlider.slide(const ShopScreen()));
+                    AuthService.repo.session().then((session) {
+                      final userId = session?.userId;
+                      if (userId == null || userId.isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Please login first'),
+                          ),
+                        );
+                        return;
+                      }
+                      Navigator.of(context).push(
+                        ScreenSlider.slide(ShopScreen(userId: userId)),
+                      );
+                    });
                   },
                 ),
 
@@ -263,20 +275,35 @@ class MainMenuScreen extends StatelessWidget {
                             ),
                             _retroActionButton(
                               text: 'OK',
-                              onPressed: () {
+                              onPressed: () async {
                                 final user = userController.text.trim();
                                 final pass = passController.text;
-                                if (user == 'admin' && pass == 'admin') {
-                                  Navigator.of(dialogContext).pop();
-                                  Navigator.pushNamed(
-                                    context,
-                                    AdminScreen.routeName,
-                                  );
-                                } else {
+
+                                if (user != 'admin') {
                                   setState(() {
                                     errorText = 'Pogresan admin login';
                                   });
+                                  return;
                                 }
+
+                                final res = await AuthService.repo.login(
+                                  username: user,
+                                  password: pass,
+                                );
+
+                                if (!res.ok) {
+                                  setState(() {
+                                    errorText = res.message ??
+                                        'Pogresan admin login';
+                                  });
+                                  return;
+                                }
+
+                                Navigator.of(dialogContext).pop();
+                                Navigator.pushNamed(
+                                  context,
+                                  AdminScreen.routeName,
+                                );
                               },
                             ),
                           ],

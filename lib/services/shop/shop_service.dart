@@ -1,16 +1,17 @@
-import 'local_shop_repository.dart';
+import 'firebase_shop_repository.dart';
 import 'shop_repository.dart';
 
-import 'local_shop_catalog_repository.dart';
+import 'firebase_shop_catalog_repository.dart';
 import 'shop_catalog_repository.dart';
 import 'shop_models.dart';
 
 class ShopService {
   // isto kao kod AuthService/ScoreService: service drži repo unutra
-  static final ShopRepository repo = LocalShopRepository();
+  static final ShopRepository repo = FirebaseShopRepository();
 
   // NOVO: katalog repo (admin + shop koriste isto)
-  static final ShopCatalogRepository catalogRepo = LocalShopCatalogRepository();
+  static final ShopCatalogRepository catalogRepo =
+      FirebaseShopCatalogRepository();
 
   // ---------- KATALOG HELPERS ----------
   static Future<List<ShopItem>> getCatalog() {

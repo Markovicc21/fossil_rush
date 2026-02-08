@@ -42,7 +42,10 @@ class MyApp extends StatelessWidget {
             const MainMenuScreen(isLoggedin: false),
         '/main-menu-logged': (_) => const MainMenuScreen(isLoggedin: true),
         GameScreen.routeName: (_) => const GameScreen(isLoggedIn: false),
-        ShopScreen.routeName: (_) => const ShopScreen(),
+        ShopScreen.routeName: (ctx) {
+          final args = ModalRoute.of(ctx)?.settings.arguments;
+          return ShopScreen(userId: args is String ? args : null);
+        },
         ScoreboardScreen.routeName: (_) => const ScoreboardScreen(),
         ProfileScreen.routeName: (_) => const ProfileScreen(),
         AdminScreen.routeName: (_) => const AdminScreen(),

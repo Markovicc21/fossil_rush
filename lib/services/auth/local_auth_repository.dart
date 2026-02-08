@@ -80,7 +80,12 @@ class LocalAuthRepository implements AuthRepository {
     final username = sp.getString(_KUsername);
     if (username == null || username.isEmpty) return null;
 
-    return AuthSession(username: username, token: null);
+    return AuthSession(
+      userId: username,
+      username: username,
+      email: null,
+      token: null,
+    );
   }
 
   @override
