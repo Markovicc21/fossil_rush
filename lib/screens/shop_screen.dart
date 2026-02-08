@@ -1,6 +1,9 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:fossil_rush/widgets/back_button.dart';
 import 'package:fossil_rush/widgets/retro_panel.dart';
+import 'package:http/http.dart' as http;
 
 // ======================== SHOP SCREEN ========================
 // Ovde je ceo UI i logika shop-a:
@@ -245,6 +248,58 @@ class _ShopScreenState extends State<ShopScreen> {
         _buyCoinsButton(),
       ],
     );
+  }
+
+  // ---------------- DEMO PAYMENTS (API) ----------------
+  // NOTE: U produkciji bi ovo islo preko Google Play Billing.
+  Future<void> _demoPay(String packId, String methodLabel) async {
+    if (_userId == null || _userId!.isEmpty) return;
+
+    final url = Uri.parse('https://httpbin.org/post');
+    final packCoins = <String, int>{
+      'coins_500': 500,
+      'coins_1200': 1200,
+      'coins_3000': 3000,
+    };
+
+    try {
+      final res = await http.post(
+        url,
+        headers: const {'Content-Type': 'application/json'},
+        body: jsonEncode({'uid': _userId, 'packId': packId}),
+      );
+
+      if (res.statusCode != 200) {
+        throw Exception('HTTP ${res.statusCode}');
+      }
+
+      final coinsAdded = packCoins[packId] ?? 0;
+      if (coinsAdded <= 0) throw Exception('Invalid packId');
+
+      final next = await ShopService.repo.addCoins(
+        _userId!,
+        amount: coinsAdded,
+      );
+      if (!mounted) return;
+
+      setState(() {
+        coins = next.coins;
+      });
+      _showToast('$methodLabel SUCCESS');
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Payment error: $e')),
+      );
+    }
+  }
+
+  Future<void> demoGooglePay(String packId) {
+    return _demoPay(packId, 'GOOGLE PAY (DEMO)');
+  }
+
+  Future<void> demoCardPay(String packId) {
+    return _demoPay(packId, 'CARD (DEMO)');
   }
 
   // ======================== ACTIVE CARD ========================
@@ -495,11 +550,50 @@ class _ShopScreenState extends State<ShopScreen> {
 
   // ======================== BUY COINS DIALOG (UI ONLY) ========================
   Future<void> _showBuyCoinsDialog() async {
+    final nameCtrl = TextEditingController();
+    final cardCtrl = TextEditingController();
+    final expCtrl = TextEditingController();
+    final cvvCtrl = TextEditingController();
+    final giftCtrl = TextEditingController();
+    const giftCodes = <String, String>{
+      'coins_500': 'GIFT500',
+      'coins_1200': 'GIFT1200',
+      'coins_3000': 'GIFT3000',
+    };
+
     await showDialog<void>(
       context: context,
       barrierDismissible: true,
       builder: (dialogContext) {
+        String selectedPackId = 'coins_500';
+        String selectedMethod = 'card';
+        String gpayMethod = 'balance';
+        bool isPaying = false;
+        String? payingMethod;
         final size = MediaQuery.of(dialogContext).size;
+
+        bool isCardValid() {
+          final name = nameCtrl.text.trim();
+          final cardDigits = cardCtrl.text.replaceAll(RegExp(r'\D'), '');
+          final exp = expCtrl.text.trim();
+          final cvvDigits = cvvCtrl.text.replaceAll(RegExp(r'\D'), '');
+
+          if (name.isEmpty) return false;
+          if (cardDigits.length != 16) return false;
+          if (!_isValidExpiry(exp)) return false;
+          if (cvvDigits.length != 3) return false;
+          return true;
+        }
+
+        bool isGpayValid() {
+          if (gpayMethod == 'gift') {
+            final code = giftCtrl.text.trim().toUpperCase();
+            final expected = giftCodes[selectedPackId];
+            return expected != null && code == expected;
+          }
+          return true;
+        }
+
         return Center(
           child: ConstrainedBox(
             constraints: BoxConstraints(
@@ -508,131 +602,472 @@ class _ShopScreenState extends State<ShopScreen> {
             ),
             child: Material(
               color: Colors.transparent,
-              child: RetroPanel(
-                fill: const Color(0xFFA56A43),
-                padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const Text(
-                      'BUY COINS',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 22,
-                        color: Color(0xFFFFE7C2),
-                        height: 1.0,
-                        shadows: [
-                          Shadow(
-                            offset: Offset(2, 2),
-                            color: Color(0xFF2A1A12),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Container(
-                      height: 2,
-                      color: const Color(0xFF2A1A12).withOpacity(0.35),
-                    ),
-                    const SizedBox(height: 12),
-
-                    _coinPackRow(label: '500 COINS', price: '\$0.99'),
-                    const SizedBox(height: 8),
-                    _coinPackRow(label: '1200 COINS', price: '\$1.99'),
-                    const SizedBox(height: 8),
-                    _coinPackRow(label: '3000 COINS', price: '\$3.99'),
-
-                    const SizedBox(height: 12),
-                    Container(
-                      height: 2,
-                      color: const Color(0xFF2A1A12).withOpacity(0.20),
-                    ),
-                    const SizedBox(height: 10),
-
-                    const Text(
-                      'PAYMENT',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Color(0xFFFFE7C2),
-                        height: 1.0,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-
-                    Row(
+              child: StatefulBuilder(
+                builder: (ctx, setState) {
+                  return RetroPanel(
+                    fill: const Color(0xFFA56A43),
+                    padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Expanded(
-                          child: _retroPayButton(
-                            icon: Icons.credit_card,
-                            text: 'CARD',
-                            onPressed: () {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Card: coming soon'),
-                                ),
-                              );
-                            },
+                        const Text(
+                          'BUY COINS',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 22,
+                            color: Color(0xFFFFE7C2),
+                            height: 1.0,
+                            shadows: [
+                              Shadow(
+                                offset: Offset(2, 2),
+                                color: Color(0xFF2A1A12),
+                              ),
+                            ],
                           ),
                         ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: _retroPayButton(
-                            icon: Icons.account_balance_wallet,
-                            text: 'GOOGLE PAY',
-                            onPressed: () {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Google Pay: coming soon'),
-                                ),
-                              );
-                            },
+                        const SizedBox(height: 12),
+                        Container(
+                          height: 2,
+                          color: const Color(0xFF2A1A12).withOpacity(0.35),
+                        ),
+                        const SizedBox(height: 12),
+
+                        _coinPackRow(
+                          label: '500 COINS',
+                          price: '\$0.99',
+                          selected: selectedPackId == 'coins_500',
+                          onTap: () =>
+                              setState(() => selectedPackId = 'coins_500'),
+                        ),
+                        const SizedBox(height: 8),
+                        _coinPackRow(
+                          label: '1200 COINS',
+                          price: '\$1.99',
+                          selected: selectedPackId == 'coins_1200',
+                          onTap: () =>
+                              setState(() => selectedPackId = 'coins_1200'),
+                        ),
+                        const SizedBox(height: 8),
+                        _coinPackRow(
+                          label: '3000 COINS',
+                          price: '\$3.99',
+                          selected: selectedPackId == 'coins_3000',
+                          onTap: () =>
+                              setState(() => selectedPackId = 'coins_3000'),
+                        ),
+
+                        const SizedBox(height: 12),
+                        Container(
+                          height: 2,
+                          color: const Color(0xFF2A1A12).withOpacity(0.20),
+                        ),
+                        const SizedBox(height: 10),
+
+                        const Text(
+                          'PAYMENT METHOD',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Color(0xFFFFE7C2),
+                            height: 1.0,
                           ),
                         ),
+                        const SizedBox(height: 8),
+
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _methodButton(
+                                text: 'CARD',
+                                selected: selectedMethod == 'card',
+                                onTap: () => setState(() {
+                                  selectedMethod = 'card';
+                                }),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: _methodButton(
+                                text: 'GOOGLE PAY',
+                                selected: selectedMethod == 'gpay',
+                                onTap: () => setState(() {
+                                  selectedMethod = 'gpay';
+                                }),
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 12),
+                        if (selectedMethod == 'card') ...[
+                          Container(
+                            height: 2,
+                            color: const Color(0xFF2A1A12).withOpacity(0.20),
+                          ),
+                          const SizedBox(height: 10),
+                          const Text(
+                            'CARD DETAILS',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Color(0xFFFFE7C2),
+                              height: 1.0,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          _paymentInput(
+                            hint: 'Name on card',
+                            controller: nameCtrl,
+                            onChanged: (_) => setState(() {}),
+                          ),
+                          const SizedBox(height: 8),
+                          _paymentInput(
+                            hint: 'Card number (16 digits)',
+                            controller: cardCtrl,
+                            keyboardType: TextInputType.number,
+                            inputFormatters: [_CardNumberInputFormatter()],
+                            onChanged: (_) => setState(() {}),
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _paymentInput(
+                                  hint: 'MM/YY',
+                                  controller: expCtrl,
+                                  keyboardType: TextInputType.number,
+                                  inputFormatters: [
+                                    _ExpiryDateInputFormatter(),
+                                  ],
+                                  onChanged: (_) => setState(() {}),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: _paymentInput(
+                                  hint: 'CVV',
+                                  controller: cvvCtrl,
+                                  keyboardType: TextInputType.number,
+                                  inputFormatters: [
+                                    FilteringTextInputFormatter.digitsOnly,
+                                    LengthLimitingTextInputFormatter(3),
+                                  ],
+                                  onChanged: (_) => setState(() {}),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _retroActionButton(
+                                  text: 'CANCEL',
+                                  onPressed: () =>
+                                      Navigator.of(dialogContext).pop(),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: _retroPayButton(
+                                  icon: Icons.shopping_cart,
+                                  text: isPaying && payingMethod == 'card'
+                                      ? 'PROCESSING...'
+                                      : 'BUY',
+                                  enabled: !isPaying && isCardValid(),
+                                  onPressed: () async {
+                                    setState(() {
+                                      isPaying = true;
+                                      payingMethod = 'card';
+                                    });
+                                    await demoCardPay(selectedPackId);
+                                    if (mounted) {
+                                      setState(() {
+                                        isPaying = false;
+                                        payingMethod = null;
+                                      });
+                                    }
+                                  },
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          if (!isCardValid())
+                            const Text(
+                              'Fill card details to continue',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: Color(0xFFFFE7C2),
+                                height: 1.0,
+                              ),
+                            ),
+                        ] else ...[
+                          Container(
+                            height: 2,
+                            color: const Color(0xFF2A1A12).withOpacity(0.20),
+                          ),
+                          const SizedBox(height: 10),
+                          const Text(
+                            'GOOGLE PLAY',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Color(0xFFFFE7C2),
+                              height: 1.0,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          _gpayOptionRow(
+                            text: 'Google Play balance',
+                            selected: gpayMethod == 'balance',
+                            onTap: () => setState(() {
+                              gpayMethod = 'balance';
+                            }),
+                          ),
+                          const SizedBox(height: 6),
+                          _gpayOptionRow(
+                            text: 'Gift card',
+                            selected: gpayMethod == 'gift',
+                            onTap: () => setState(() {
+                              gpayMethod = 'gift';
+                            }),
+                          ),
+                          if (gpayMethod == 'gift') ...[
+                            const SizedBox(height: 8),
+                            _paymentInput(
+                              hint: 'Gift card code',
+                              controller: giftCtrl,
+                              inputFormatters: [
+                                FilteringTextInputFormatter.allow(
+                                  RegExp(r'[A-Za-z0-9]'),
+                                ),
+                                LengthLimitingTextInputFormatter(16),
+                              ],
+                              onChanged: (_) => setState(() {}),
+                            ),
+                          ],
+                          const SizedBox(height: 10),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _retroActionButton(
+                                  text: 'CANCEL',
+                                  onPressed: () =>
+                                      Navigator.of(dialogContext).pop(),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: _retroPayButton(
+                                  icon: Icons.account_balance_wallet,
+                                  text: isPaying && payingMethod == 'gpay'
+                                      ? 'PROCESSING...'
+                                      : 'PAY',
+                                  enabled: !isPaying && isGpayValid(),
+                                  onPressed: () async {
+                                    if (gpayMethod == 'gift') {
+                                      final code = giftCtrl.text
+                                          .trim()
+                                          .toUpperCase();
+                                      final expected =
+                                          giftCodes[selectedPackId];
+                                      if (expected == null || code != expected) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          const SnackBar(
+                                            content: Text('Invalid gift card'),
+                                          ),
+                                        );
+                                        return;
+                                      }
+                                    }
+                                    setState(() {
+                                      isPaying = true;
+                                      payingMethod = 'gpay';
+                                    });
+                                    await demoGooglePay(selectedPackId);
+                                    if (mounted) {
+                                      setState(() {
+                                        isPaying = false;
+                                        payingMethod = null;
+                                      });
+                                    }
+                                  },
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          if (!isGpayValid())
+                            const Text(
+                              'Enter gift card code to continue',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: Color(0xFFFFE7C2),
+                                height: 1.0,
+                              ),
+                            ),
+                        ],
                       ],
                     ),
-
-                    const SizedBox(height: 10),
-                    _retroActionButton(
-                      text: 'CLOSE',
-                      onPressed: () => Navigator.of(dialogContext).pop(),
-                    ),
-                  ],
-                ),
+                  );
+                },
               ),
             ),
           ),
         );
       },
     );
+
+    nameCtrl.dispose();
+    cardCtrl.dispose();
+    expCtrl.dispose();
+    cvvCtrl.dispose();
+    giftCtrl.dispose();
   }
 
-  Widget _coinPackRow({required String label, required String price}) {
-    return RetroPanel(
-      fill: const Color(0xFFD6B48A),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      shadowOffset: 2,
-      child: Row(
-        children: [
-          Text(
-            label,
+  bool _isValidExpiry(String v) {
+    final m = RegExp(r'^(\d{2})/(\d{2})$').firstMatch(v);
+    if (m == null) return false;
+    final month = int.tryParse(m.group(1) ?? '') ?? 0;
+    return month >= 1 && month <= 12;
+  }
+
+  Widget _paymentInput({
+    required String hint,
+    required TextEditingController controller,
+    TextInputType? keyboardType,
+    ValueChanged<String>? onChanged,
+    List<TextInputFormatter>? inputFormatters,
+  }) {
+    return TextField(
+      controller: controller,
+      keyboardType: keyboardType,
+      inputFormatters: inputFormatters,
+      onChanged: onChanged,
+      style: const TextStyle(fontSize: 12, color: Color(0xFF2A1A12)),
+      decoration: InputDecoration(
+        hintText: hint,
+        hintStyle: const TextStyle(fontSize: 10, color: Color(0xFF5C4033)),
+        filled: true,
+        fillColor: const Color(0xFFD6B48A),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 10,
+          vertical: 8,
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(6),
+          borderSide: const BorderSide(color: Color(0xFF2A1A12), width: 2),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(6),
+          borderSide: const BorderSide(color: Color(0xFFFFA726), width: 2),
+        ),
+      ),
+    );
+  }
+
+  Widget _coinPackRow({
+    required String label,
+    required String price,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: RetroPanel(
+        fill: selected ? const Color(0xFF97C86E) : const Color(0xFFD6B48A),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        shadowOffset: 2,
+        child: Row(
+          children: [
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 12,
+                color: Color(0xFF2A1A12),
+                height: 1.0,
+              ),
+            ),
+            const Spacer(),
+            Text(
+              price,
+              style: const TextStyle(
+                fontSize: 12,
+                color: Color(0xFF2A1A12),
+                height: 1.0,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _methodButton({
+    required String text,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: RetroPanel(
+        fill: selected ? const Color(0xFF97C86E) : const Color(0xFFD6B48A),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+        shadowOffset: 2,
+        child: Center(
+          child: Text(
+            text,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: const TextStyle(
-              fontSize: 12,
+              fontSize: 11,
               color: Color(0xFF2A1A12),
               height: 1.0,
             ),
           ),
-          const Spacer(),
-          Text(
-            price,
-            style: const TextStyle(
-              fontSize: 12,
-              color: Color(0xFF2A1A12),
-              height: 1.0,
+        ),
+      ),
+    );
+  }
+
+  Widget _gpayOptionRow({
+    required String text,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: RetroPanel(
+        fill: selected ? const Color(0xFF97C86E) : const Color(0xFFD6B48A),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        shadowOffset: 2,
+        child: Row(
+          children: [
+            Container(
+              width: 10,
+              height: 10,
+              decoration: BoxDecoration(
+                color: selected
+                    ? const Color(0xFF2EC45A)
+                    : const Color(0xFF8B5A3C),
+                border: Border.all(color: const Color(0xFF2A1A12), width: 2),
+              ),
             ),
-          ),
-        ],
+            const SizedBox(width: 8),
+            Text(
+              text,
+              style: const TextStyle(
+                fontSize: 11,
+                color: Color(0xFF2A1A12),
+                height: 1.0,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -641,17 +1076,24 @@ class _ShopScreenState extends State<ShopScreen> {
     required IconData icon,
     required String text,
     required VoidCallback onPressed,
+    bool enabled = true,
   }) {
     return GestureDetector(
-      onTap: onPressed,
+      onTap: enabled ? onPressed : null,
       child: RetroPanel(
-        fill: const Color(0xFF55B6FF),
+        fill: enabled ? const Color(0xFF55B6FF) : const Color(0xFF6B6B6B),
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
         shadowOffset: 2,
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 14, color: const Color(0xFF2A1A12)),
+            Icon(
+              icon,
+              size: 14,
+              color: enabled
+                  ? const Color(0xFF2A1A12)
+                  : const Color(0xFF2A1A12),
+            ),
             const SizedBox(width: 6),
             Flexible(
               child: Text(
@@ -842,6 +1284,77 @@ class _ShopScreenState extends State<ShopScreen> {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _CardNumberInputFormatter extends TextInputFormatter {
+  static final _digitReg = RegExp(r'\d');
+
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    final digits = newValue.text.replaceAll(RegExp(r'\D'), '');
+    final trimmed = digits.length > 16 ? digits.substring(0, 16) : digits;
+
+    final buffer = StringBuffer();
+    for (var i = 0; i < trimmed.length; i++) {
+      buffer.write(trimmed[i]);
+      final isBlockEnd = (i + 1) % 4 == 0;
+      if (isBlockEnd && i + 1 != trimmed.length) {
+        buffer.write(' ');
+      }
+    }
+    final formatted = buffer.toString();
+
+    var digitsBeforeCursor = 0;
+    for (var i = 0;
+        i < newValue.selection.baseOffset && i < newValue.text.length;
+        i++) {
+      if (_digitReg.hasMatch(newValue.text[i])) digitsBeforeCursor++;
+    }
+    final spaces = digitsBeforeCursor ~/ 4;
+    final newOffset = (digitsBeforeCursor + spaces).clamp(0, formatted.length);
+
+    return TextEditingValue(
+      text: formatted,
+      selection: TextSelection.collapsed(offset: newOffset),
+    );
+  }
+}
+
+class _ExpiryDateInputFormatter extends TextInputFormatter {
+  static final _digitReg = RegExp(r'\d');
+
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    final digits = newValue.text.replaceAll(RegExp(r'\D'), '');
+    final trimmed = digits.length > 4 ? digits.substring(0, 4) : digits;
+
+    String formatted;
+    if (trimmed.length <= 2) {
+      formatted = trimmed;
+    } else {
+      formatted = '${trimmed.substring(0, 2)}/${trimmed.substring(2)}';
+    }
+
+    var digitsBeforeCursor = 0;
+    for (var i = 0;
+        i < newValue.selection.baseOffset && i < newValue.text.length;
+        i++) {
+      if (_digitReg.hasMatch(newValue.text[i])) digitsBeforeCursor++;
+    }
+    final slash = digitsBeforeCursor > 2 ? 1 : 0;
+    final newOffset = (digitsBeforeCursor + slash).clamp(0, formatted.length);
+
+    return TextEditingValue(
+      text: formatted,
+      selection: TextSelection.collapsed(offset: newOffset),
     );
   }
 }

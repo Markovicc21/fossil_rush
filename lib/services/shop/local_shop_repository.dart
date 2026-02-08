@@ -106,4 +106,13 @@ class LocalShopRepository implements ShopRepository {
     await _save(u, next);
     return next;
   }
+
+  @override
+  Future<ShopState> addCoins(String userId, {required int amount}) async {
+    final u = userId.trim();
+    final s = await load(u);
+    final next = s.copyWith(coins: s.coins + amount);
+    await _save(u, next);
+    return next;
+  }
 }

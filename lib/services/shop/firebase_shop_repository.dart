@@ -101,4 +101,18 @@ class FirebaseShopRepository implements ShopRepository {
       return next;
     });
   }
+
+  @override
+  Future<ShopState> addCoins(String userId, {required int amount}) async {
+    final ref = _doc(userId);
+
+    return _db.runTransaction((tx) async {
+      final snap = await tx.get(ref);
+      final current = snap.exists ? _fromMap(snap.data()) : _defaultState();
+
+      final next = current.copyWith(coins: current.coins + amount);
+      tx.set(ref, _toMap(next));
+      return next;
+    });
+  }
 }

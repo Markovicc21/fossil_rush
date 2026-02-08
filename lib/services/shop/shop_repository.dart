@@ -10,4 +10,6 @@ abstract class ShopRepository {
   });
 
   Future<ShopState> equip(String userId, {required String itemId});
+
+  Future<ShopState> addCoins(String userId, {required int amount});
 }

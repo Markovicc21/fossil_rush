@@ -1,1 +1,37 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"dinorun-58272","appId":"1:489110133030:android:ae51cd795f389f58d089e7","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"dinorun-58272","configurations":{"android":"1:489110133030:android:ae51cd795f389f58d089e7","ios":"1:489110133030:ios:c14a57eed6ef048fd089e7","web":"1:489110133030:web:c42d7e54f10fdf01d089e7"}}}}}}
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "dinorun-58272",
+          "appId": "1:489110133030:android:ae51cd795f389f58d089e7",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "dinorun-58272",
+          "configurations": {
+            "android": "1:489110133030:android:ae51cd795f389f58d089e7",
+            "ios": "1:489110133030:ios:c14a57eed6ef048fd089e7",
+            "web": "1:489110133030:web:c42d7e54f10fdf01d089e7"
+          }
+        }
+      }
+    }
+  },
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "default",
+      "disallowLegacyRuntimeConfig": true,
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "*.local"
+      ]
+    }
+  ]
+}
