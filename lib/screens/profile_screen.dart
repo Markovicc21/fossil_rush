@@ -1,17 +1,78 @@
 import 'package:flutter/material.dart';
 import '../services/auth/auth_service.dart';
+import '../services/score/score_service.dart';
+import '../services/shop/shop_models.dart';
+import '../services/shop/shop_service.dart';
+import '../models/score_state.dart';
 import '../widgets/back_button.dart';
 import '../widgets/retro_panel.dart';
 
+class _ProfileData {
+  final String userId;
+  final String username;
+  final ScoreState score;
+  final ShopState shop;
+  final List<ShopItem> catalog;
+
+  const _ProfileData({
+    required this.userId,
+    required this.username,
+    required this.score,
+    required this.shop,
+    required this.catalog,
+  });
+}
+
 //  PROFILE SCREEN (glavni ekran profila)
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
   static const routeName = '/profile';
 
   @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  late final Future<_ProfileData> _future = _loadProfile();
+
+  Future<_ProfileData> _loadProfile() async {
+    final session = await AuthService.repo.session();
+    final userId = session?.userId.trim();
+    if (userId == null || userId.isEmpty) {
+      throw Exception('No session');
+    }
+
+    final username =
+        (session?.username ?? session?.email ?? userId).toLowerCase();
+
+    final results = await Future.wait([
+      ScoreService.get(userId),
+      ShopService.repo.load(userId),
+      ShopService.catalogRepo.loadCatalog(),
+    ]);
+
+    return _ProfileData(
+      userId: userId,
+      username: username,
+      score: results[0] as ScoreState,
+      shop: results[1] as ShopState,
+      catalog: results[2] as List<ShopItem>,
+    );
+  }
+
+  static String _formatTimePlayed(int seconds) {
+    final h = seconds ~/ 3600;
+    final m = (seconds % 3600) ~/ 60;
+    final s = seconds % 60;
+    return '${h.toString().padLeft(2, '0')}:'
+        '${m.toString().padLeft(2, '0')}:'
+        '${s.toString().padLeft(2, '0')}';
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return FutureBuilder(
-      future: AuthService.repo.session(),
+    return FutureBuilder<_ProfileData>(
+      future: _future,
       builder: (context, snap) {
         // LOADING STATE
         if (snap.connectionState == ConnectionState.waiting) {
@@ -22,10 +83,18 @@ class ProfileScreen extends StatelessWidget {
 
         // ERROR STATE
         if (snap.hasError) {
+          final msg = snap.error.toString();
+          if (msg.contains('No session')) {
+            return const Scaffold(
+              body: Center(
+                child: Text('No session', style: TextStyle(color: Colors.white)),
+              ),
+            );
+          }
           return Scaffold(
             body: Center(
               child: Text(
-                'Session error: ${snap.error}',
+                'Profile load error: ${snap.error}',
                 style: const TextStyle(color: Colors.white),
               ),
             ),
@@ -33,7 +102,7 @@ class ProfileScreen extends StatelessWidget {
         }
 
         //  NO SESSION / NO USERNAME STATE
-        if (!snap.hasData || snap.data?.username == null) {
+        if (!snap.hasData) {
           return const Scaffold(
             body: Center(
               child: Text('No session', style: TextStyle(color: Colors.white)),
@@ -41,15 +110,19 @@ class ProfileScreen extends StatelessWidget {
           );
         }
 
-        // OK: session postoji -> uzimam username
-        final username = snap.data!.username.toLowerCase();
+        final data = snap.data!;
+        final username = data.username;
 
-        //  2) Placeholder vrednosti za statistiku (za sada 0)
-        //  Kasnije ovde ide pravi data iz baze/local storage
+        //  2) Statistika iz backend-a
+        final bestScore = data.score.bestScore;
+        final gamesPlayed = data.score.gamesPlayed;
+        final timePlayed = _formatTimePlayed(data.score.timePlayedSec);
 
-        const bestScore = 0;
-        const gamesPlayed = 0;
-        const dinosCaught = 0;
+        //  3) Achievements (PRO + COLLECTOR)
+        final proUnlocked = gamesPlayed >= 10 && bestScore >= 70;
+        final enabledItems = data.catalog.where((e) => e.enabled).toList();
+        final collectorUnlocked = enabledItems.isNotEmpty &&
+            enabledItems.every((e) => data.shop.owned.contains(e.id));
 
         //  3) Glavni UI ekrana:
         //  - Stack: pozadina slika + UI preko nje
@@ -224,9 +297,9 @@ class ProfileScreen extends StatelessWidget {
 
                                               // Red 3
                                               _statRowBig(
-                                                icon: Icons.pets,
-                                                label: 'DINOS CAUGHT',
-                                                value: '$dinosCaught',
+                                                icon: Icons.access_time,
+                                                label: 'TIME PLAYED',
+                                                value: timePlayed,
                                               ),
                                             ],
                                           ),
@@ -261,18 +334,20 @@ class ProfileScreen extends StatelessWidget {
 
                                               // Achievement kutije
                                               Row(
-                                                children: const [
+                                                children: [
                                                   Expanded(
                                                     child: _AchBox(
                                                       title: 'PRO',
                                                       icon: Icons.star,
+                                                      unlocked: proUnlocked,
                                                     ),
                                                   ),
-                                                  SizedBox(width: 12),
+                                                  const SizedBox(width: 12),
                                                   Expanded(
                                                     child: _AchBox(
                                                       title: 'COLLECTOR',
                                                       icon: Icons.emoji_events,
+                                                      unlocked: collectorUnlocked,
                                                     ),
                                                   ),
                                                 ],
@@ -449,15 +524,20 @@ class _SectionTitle extends StatelessWidget {
 class _AchBox extends StatelessWidget {
   final String title;
   final IconData icon;
+  final bool unlocked;
 
-  const _AchBox({required this.title, required this.icon});
+  const _AchBox({
+    required this.title,
+    required this.icon,
+    this.unlocked = false,
+  });
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
       height: 80,
       child: RetroPanel(
-        fill: const Color(0xFFD6B48A),
+        fill: unlocked ? const Color(0xFF97C86E) : const Color(0xFFD6B48A),
         padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
         shadowOffset: 2,
 

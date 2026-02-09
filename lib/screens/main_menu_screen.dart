@@ -33,43 +33,6 @@ class MainMenuScreen extends StatelessWidget {
           child: Image.asset('assets/images/jurassic.jpg', fit: BoxFit.cover),
         ),
         SafeArea(
-          child: Align(
-            alignment: Alignment.topRight,
-            child: Padding(
-              padding: const EdgeInsets.only(top: 10, right: 10),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  //PROFILE DUGME
-                  imageButton(
-                    asset: 'assets/images/PROFILE.png',
-                    width: 110,
-                    height: 50,
-                    onPressed: () {
-                      Navigator.of(
-                        context,
-                      ).push(ScreenSlider.slide(const ProfileScreen()));
-                    },
-                  ),
-                  //LOGOUT DUGME
-                  imageButton(
-                    asset: 'assets/images/EXIT.png',
-                    width: 55,
-                    height: 50,
-                    onPressed: () {
-                      Navigator.of(context).push(
-                        ScreenSlider.slide(
-                          const MainMenuScreen(isLoggedin: false),
-                        ),
-                      );
-                    },
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-        SafeArea(
           child: Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -123,6 +86,43 @@ class MainMenuScreen extends StatelessWidget {
                   },
                 ),
               ],
+            ),
+          ),
+        ),
+        SafeArea(
+          child: Align(
+            alignment: Alignment.topRight,
+            child: Padding(
+              padding: const EdgeInsets.only(top: 10, right: 10),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  //PROFILE DUGME
+                  imageButton(
+                    asset: 'assets/images/PROFILE.png',
+                    width: 110,
+                    height: 50,
+                    onPressed: () {
+                      Navigator.of(
+                        context,
+                      ).push(ScreenSlider.slide(const ProfileScreen()));
+                    },
+                  ),
+                  //LOGOUT DUGME
+                  imageButton(
+                    asset: 'assets/images/EXIT.png',
+                    width: 55,
+                    height: 50,
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        ScreenSlider.slide(
+                          const MainMenuScreen(isLoggedin: false),
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
             ),
           ),
         ),

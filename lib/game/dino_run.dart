@@ -75,6 +75,9 @@ class DinoRun extends FlameGame with TapCallbacks {
   // Akumulator vremena za score tick
   double _scoreAcc = 0;
 
+  // Ukupno vreme u run-u (sekunde)
+  double _timePlayedSec = 0;
+
   // Da score submit uradi samo jednom (kad zavrsi run)
   bool _submitted = false;
 
@@ -239,7 +242,12 @@ class DinoRun extends FlameGame with TapCallbacks {
     // ako nema user-a, preskoci submit
     if (userId == null || userId.isEmpty) return;
 
-    await ScoreService.submit(userId, score, username: username);
+    await ScoreService.submit(
+      userId,
+      score,
+      username: username,
+      timePlayedSec: _timePlayedSec.round(),
+    );
   }
 
   // ===================== GAME LOAD ============================
@@ -367,6 +375,7 @@ class DinoRun extends FlameGame with TapCallbacks {
 
     score = 0;
     _scoreAcc = 0;
+    _timePlayedSec = 0;
 
     if (fullReset) lives = 3;
 
@@ -662,6 +671,11 @@ class DinoRun extends FlameGame with TapCallbacks {
 
     // 5) Fizika uvek (igrac skace/ pada)
     _updatePhysics(dt);
+
+    // vreme igranja (real time)
+    if (!dead) {
+      _timePlayedSec += dt;
+    }
 
     // Ako je game over, zamrzni ostatak gameplay-a
     if (dead) return;

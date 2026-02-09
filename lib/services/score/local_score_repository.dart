@@ -25,6 +25,7 @@ class LocalScoreRepository implements ScoreRepository {
     String userId,
     int score, {
     String? username,
+    int timePlayedSec = 0,
   }) async {
     final prefs = await SharedPreferences.getInstance();
     final current = await getScore(userId);
@@ -33,6 +34,7 @@ class LocalScoreRepository implements ScoreRepository {
       lastScore: score,
       gamesPlayed: current.gamesPlayed + 1,
       bestScore: score > current.bestScore ? score : current.bestScore,
+      timePlayedSec: current.timePlayedSec + timePlayedSec,
     );
 
     await prefs.setString(_key(userId), jsonEncode(updated.toJson()));

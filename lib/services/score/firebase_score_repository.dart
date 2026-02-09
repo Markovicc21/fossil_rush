@@ -13,11 +13,13 @@ class FirebaseScoreRepository implements ScoreRepository {
     final best = data['bestScore'];
     final last = data['lastScore'];
     final games = data['gamesPlayed'];
+    final time = data['timePlayedSec'];
 
     return ScoreState(
       bestScore: (best is num) ? best.toInt() : 0,
       lastScore: (last is num) ? last.toInt() : 0,
       gamesPlayed: (games is num) ? games.toInt() : 0,
+      timePlayedSec: (time is num) ? time.toInt() : 0,
     );
   }
 
@@ -33,6 +35,7 @@ class FirebaseScoreRepository implements ScoreRepository {
     String userId,
     int score, {
     String? username,
+    int timePlayedSec = 0,
   }) async {
     final ref = _col.doc(userId);
 
@@ -44,6 +47,7 @@ class FirebaseScoreRepository implements ScoreRepository {
         lastScore: score,
         gamesPlayed: current.gamesPlayed + 1,
         bestScore: score > current.bestScore ? score : current.bestScore,
+        timePlayedSec: current.timePlayedSec + timePlayedSec,
       );
 
       final data = <String, dynamic>{

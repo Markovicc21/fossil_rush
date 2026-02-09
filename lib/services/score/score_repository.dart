@@ -6,6 +6,7 @@ abstract class ScoreRepository {
     String userId,
     int score, {
     String? username,
+    int timePlayedSec = 0,
   });
   Future<void> reset(String userId);
   Future<List<ScoreEntry>> getTop({int limit = 50});

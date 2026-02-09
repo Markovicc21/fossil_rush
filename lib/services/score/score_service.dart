@@ -14,8 +14,14 @@ class ScoreService {
     String userId,
     int score, {
     String? username,
+    int timePlayedSec = 0,
   }) {
-    return repo.submitScore(userId, score, username: username);
+    return repo.submitScore(
+      userId,
+      score,
+      username: username,
+      timePlayedSec: timePlayedSec,
+    );
   }
 
   static Future<void> reset(String userId) {
