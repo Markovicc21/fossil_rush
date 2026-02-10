@@ -52,7 +52,7 @@ class _GameScreenState extends State<GameScreen> {
       // Ovo forsira da GameWidget popuni CEO ekran (od ivice do ivice)
       body: SizedBox.expand(
         child: GameWidget<DinoRun>(
-          game: DinoRun(),
+          game: DinoRun(startedLoggedIn: widget.isLoggedIn),
           overlayBuilderMap: {
             'Hud': (ctx, game) => HudOverlay(game: game),
             'GameOver': (ctx, game) =>

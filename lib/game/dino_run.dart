@@ -32,6 +32,9 @@ class PowerUp extends SpriteComponent {
 }
 
 class DinoRun extends FlameGame with TapCallbacks {
+  DinoRun({required this.startedLoggedIn});
+
+  final bool startedLoggedIn;
   // ===================== WORLD COMPONENTS =====================
   // VAZNO:
   // Background pravimo kao 2 sprite-a zbog scroll/wrap efekta
@@ -333,6 +336,7 @@ class DinoRun extends FlameGame with TapCallbacks {
 
     // PLAYER (aktivni dino iz shop-a, default = tard)
     String activeId = 'tard';
+    if (startedLoggedIn) {
       final session = await AuthService.repo.session();
       final userId = session?.userId;
       if (userId != null && userId.isNotEmpty) {
@@ -341,6 +345,7 @@ class DinoRun extends FlameGame with TapCallbacks {
           activeId = state.activeId;
         } catch (_) {
           activeId = 'tard';
+        }
       }
     }
 

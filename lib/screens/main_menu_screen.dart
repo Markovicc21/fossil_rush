@@ -113,11 +113,12 @@ class MainMenuScreen extends StatelessWidget {
                     asset: 'assets/images/EXIT.png',
                     width: 55,
                     height: 50,
-                    onPressed: () {
-                      Navigator.of(context).push(
-                        ScreenSlider.slide(
-                          const MainMenuScreen(isLoggedin: false),
-                        ),
+                    onPressed: () async {
+                      await AuthService.repo.logout();
+                      if (!context.mounted) return;
+                      Navigator.of(context).pushNamedAndRemoveUntil(
+                        MainMenuScreen.routeName,
+                        (_) => false,
                       );
                     },
                   ),

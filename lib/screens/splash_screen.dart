@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'main_menu_screen.dart';
+import '../services/auth/auth_service.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -40,9 +41,7 @@ class _SplashScreenState extends State<SplashScreen>
     _controller.forward();
     _controller.addStatusListener((status) {
       if (status == AnimationStatus.completed && mounted) {
-        Navigator.of(
-          context,
-        ).pushReplacement(_fadeRoute(const MainMenuScreen(isLoggedin: false)));
+        _openNext();
       }
     });
   }
@@ -69,6 +68,15 @@ class _SplashScreenState extends State<SplashScreen>
         return FadeTransition(opacity: curved, child: child);
       },
     );
+  }
+
+  Future<void> _openNext() async {
+    final loggedIn = await AuthService.repo.isLoggedIn();
+    if (!mounted) return;
+    final next = loggedIn
+        ? const MainMenuScreen(isLoggedin: true)
+        : const MainMenuScreen(isLoggedin: false);
+    Navigator.of(context).pushReplacement(_fadeRoute(next));
   }
 
   @override
